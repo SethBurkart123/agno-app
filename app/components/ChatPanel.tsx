@@ -1,0 +1,65 @@
+"use client";
+
+import React, { useCallback, useEffect, useMemo, useRef } from "react";
+import dynamic from "next/dynamic";
+import ChatInputForm from "@/app/components/ChatInputForm";
+import { useChat } from "@/app/contexts/chat-context";
+import { useChatInput } from "@/app/components/Chat";
+
+// Keep Chat itself dynamically imported as in the page to avoid SSR issues
+const Chat = dynamic(() => import("@/app/components/Chat"), { ssr: false });
+
+/**
+ * ChatPanel isolates the frequently-updating streaming state
+ * so the rest of the page (sidebar/header) doesn't re-render
+ * on every token.
+ */
+export default function ChatPanel() {
+  const { selectedModel, setSelectedModel, models, getModelInfo } = useChat();
+
+  // Own streaming + input state locally inside this subtree
+  const { input, handleInputChange, handleSubmit, isLoading, inputRef, messages } = useChatInput();
+
+  // Provide stable callback wrappers so siblings like ChatInputForm
+  // don't re-render on every token just because handler identity changes.
+  const submitRef = useRef(handleSubmit);
+  const changeRef = useRef(handleInputChange);
+  useEffect(() => { submitRef.current = handleSubmit; }, [handleSubmit]);
+  useEffect(() => { changeRef.current = handleInputChange; }, [handleInputChange]);
+
+  const stableHandleSubmit = useCallback((e: React.FormEvent<HTMLFormElement>) => {
+    return submitRef.current(e);
+  }, []);
+
+  const stableHandleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    return changeRef.current(e);
+  }, []);
+
+  // Stable getModelName so it doesn't force re-renders
+  const getModelName = useCallback((id: string) => getModelInfo(id)?.name || id, [getModelInfo]);
+
+  return (
+    <>
+      <div className="overflow-y-scroll flex-1">
+        <div className="top-0 sticky h-4 bg-gradient-to-b from-[#30242A] to-transparent z-20" />
+        <div className="flex flex-col h-full">
+          <Chat messages={messages} isLoading={isLoading} />
+        </div>
+      </div>
+      <div className="px-4 pb-4">
+        <ChatInputForm
+          input={input}
+          handleInputChange={stableHandleInputChange}
+          handleSubmit={stableHandleSubmit}
+          isLoading={isLoading}
+          inputRef={inputRef}
+          selectedModel={selectedModel}
+          setSelectedModel={setSelectedModel}
+          models={models}
+          getModelName={getModelName}
+        />
+      </div>
+    </>
+  );
+}
+
