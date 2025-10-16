@@ -5,14 +5,14 @@ from pytauri import (
     builder_factory,
     context_factory,
 )
-
+from tauri_app.db import init_database
 from .functions import commands, PYTAURI_GEN_TS
 
 def main() -> int:
     with start_blocking_portal("asyncio") as portal:
         if PYTAURI_GEN_TS:
             # ⭐ Generate TypeScript Client to your frontend `src/client` directory
-            output_dir = Path(__file__).parent.parent.parent.parent / "src" / "client"
+            output_dir = Path(__file__).parent.parent.parent.parent / "app" / "python"
             # ⭐ The CLI to run `json-schema-to-typescript`,
             # `--format=false` is optional to improve performance
             json2ts_cmd = "pnpm json2ts --format=false"
@@ -28,5 +28,8 @@ def main() -> int:
             context=context_factory(),
             invoke_handler=commands.generate_handler(portal),
         )
+        # Initialize database in the Tauri resource/app dir
+        init_database(app)
+
         exit_code = app.run_return()
         return exit_code

@@ -1,3 +1,0 @@
-pytauri==0.8.*
-pydantic==2.*
-anyio==4.*

@@ -1,7 +1,7 @@
 import { useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Message } from 'ai';
-import { AllChatsData, ThinkingTime } from '@/lib/types/chat';
+import { AllChatsData } from '@/lib/types/chat';
 import { BackendChatStorageService } from '@/lib/services/backend-chat-storage';
 
 interface UseChatOperationsProps {
@@ -189,42 +189,12 @@ export function useChatOperations({
     }
   }, [allChatsData, setAllChatsData, storageService]);
 
-  const addThinkingTime = useCallback(async (id: string, messageIndex: number, thinkingTimeMs: number) => {
-    if (!allChatsData.chats[id]) return;
-
-    try {
-      const newThinkingTime: ThinkingTime[] = [
-        ...allChatsData.chats[id].thinkingTime,
-        { index: messageIndex, time: thinkingTimeMs },
-      ];
-
-      await storageService.updateChat(id, { thinkingTime: newThinkingTime });
-
-      const nextData: AllChatsData = {
-        ...allChatsData,
-        chats: {
-          ...allChatsData.chats,
-          [id]: {
-            ...allChatsData.chats[id],
-            thinkingTime: newThinkingTime,
-          },
-        },
-      };
-
-      setAllChatsData(nextData);
-    } catch (error) {
-      console.error('Failed to add thinking time:', error);
-      throw error;
-    }
-  }, [allChatsData, setAllChatsData, storageService]);
-
   return {
     startNewChat,
     switchChat,
     deleteChat,
     renameChat,
     updateChatMessages,
-    addThinkingTime,
     createNewChat,
     finalizeNewChat,
     navigationLock,

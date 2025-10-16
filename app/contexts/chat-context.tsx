@@ -94,7 +94,6 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       deleteChat: operations.deleteChat,
       renameChat: operations.renameChat,
       updateChatMessages: operations.updateChatMessages,
-      addThinkingTime: operations.addThinkingTime,
       selectedModel,
       setSelectedModel,
       models,

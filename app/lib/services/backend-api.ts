@@ -34,40 +34,26 @@ class BackendApiService {
   }
 
   async getChat(chatId: string): Promise<{ id: string; messages: BackendChatMessage[] }> {
-    // Try backend first if configured
-    if (this.baseUrl) {
-      try {
-        const res = await fetch(`${this.baseUrl}/chats/${encodeURIComponent(chatId)}`);
-        if (res.ok) {
-          return res.json();
-        }
-      } catch {
-        // fall through to local fallback
-      }
-    }
-
-    // Local fallback: read from localStorage-based storage
+    // Prefer Python backend (PyTauri) for chat messages
     try {
-      const raw = typeof window !== 'undefined' ? localStorage.getItem('chat-storage') : null;
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        const chat = parsed?.chats?.[chatId];
-        if (chat) {
-          return {
-            id: chatId,
-            messages: (chat.messages || []).map((m: any) => ({
-              id: m.id,
-              role: m.role,
-              content: m.content,
-              toolCalls: m.toolCalls,
-              createdAt: m.createdAt,
-            })),
-          };
-        }
-      }
-    } catch {}
-
-    return { id: chatId, messages: [] };
+      const py = await import('@/lib/services/python-client');
+      const result = await py.getChat({ id: chatId });
+      // Normalize snake_case keys from Python to camelCase for frontend
+      const normalized = {
+        id: result.id,
+        messages: (result.messages || []).map((m: any) => ({
+          id: m.id,
+          role: m.role,
+          content: m.content,
+          createdAt: m.created_at,
+          toolCalls: m.tool_calls,
+        })),
+      };
+      return normalized;
+    } catch {
+      // As a last resort, return empty
+      return { id: chatId, messages: [] };
+    }
   }
 
   async streamChat(
@@ -92,14 +78,11 @@ class BackendApiService {
     // Try Python backend (PyTauri) for a response, then stream it.
     let pythonReply: string | null = null;
     try {
-      // Dynamically import to avoid SSR issues
-      const client = await import('../../../src/client/apiClient');
+      const { pyInvoke } = await import('tauri-plugin-pytauri-api');
       const last = messages[messages.length - 1];
-      if (client && typeof client.greet === 'function') {
-        const res = await client.greet({ name: last?.content || 'there' });
-        if (res && typeof (res as any).message === 'string') {
-          pythonReply = (res as any).message as string;
-        }
+      const res: any = await pyInvoke('greet', { name: last?.content || 'there' });
+      if (res && typeof res.message === 'string') {
+        pythonReply = res.message as string;
       }
     } catch {
       // ignore and fall back to synthetic

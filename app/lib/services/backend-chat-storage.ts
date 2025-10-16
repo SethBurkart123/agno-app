@@ -1,10 +1,8 @@
-import { v4 as uuidv4 } from 'uuid';
-import { ChatStorageService } from '@/lib/services/chat-storage';
 import type { AllChatsData, ChatData } from '@/lib/types/chat';
+import * as py from '@/lib/services/python-client';
 
 export class BackendChatStorageService {
   private static instance: BackendChatStorageService;
-  private storage = ChatStorageService.getInstance();
 
   private constructor() {}
 
@@ -17,73 +15,31 @@ export class BackendChatStorageService {
 
   async load(): Promise<AllChatsData> {
     try {
-      const data = this.storage.load();
-      return Promise.resolve(data);
-    } catch {
-      return Promise.resolve({ chats: {} });
+      const data = await py.getAllChats();
+      // Ensure shape matches AllChatsData
+      return data as unknown as AllChatsData;
+    } catch (e) {
+      console.error('Failed to load chats from backend:', e);
+      return { chats: {} };
     }
   }
 
-  async createChat(
-    title?: string,
-    model?: string,
-    chatId?: string,
-  ): Promise<ChatData> {
-    const id = chatId || (typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : uuidv4());
-    const now = new Date().toISOString();
-    const newChat: ChatData = {
-      id,
-      title: title?.trim() || 'New Chat',
-      messages: [],
-      thinkingTime: [],
-      model,
-      createdAt: now,
-      updatedAt: now,
-    };
-
-    const data = this.storage.load();
-    const next: AllChatsData = {
-      ...data,
-      chats: {
-        ...data.chats,
-        [id]: newChat,
-      },
-    };
-
-    this.storage.saveImmediate(next);
-    return newChat;
+  async createChat(title?: string, model?: string, chatId?: string): Promise<ChatData> {
+    const result = await py.createChat({ id: chatId, title, model });
+    return result as unknown as ChatData;
   }
 
   async updateChat(id: string, partial: Partial<ChatData>): Promise<ChatData> {
-    const data = this.storage.load();
-    const existing = data.chats[id];
-    if (!existing) {
-      throw new Error(`Chat not found: ${id}`);
-    }
-
-    const updated: ChatData = {
-      ...existing,
-      ...partial,
-      updatedAt: new Date().toISOString(),
-    };
-
-    const next: AllChatsData = {
-      ...data,
-      chats: {
-        ...data.chats,
-        [id]: updated,
-      },
-    };
-    this.storage.saveImmediate(next);
-    return updated;
+    // Map TS ChatData fields to expected command input (camelCase accepted)
+    const body: any = { id };
+    if (typeof partial.title === 'string') body.title = partial.title;
+    if (Array.isArray(partial.messages)) body.messages = partial.messages;
+    if (typeof partial.model === 'string') body.model = partial.model;
+    const result = await py.updateChat(body);
+    return result as unknown as ChatData;
   }
 
   async deleteChat(id: string): Promise<void> {
-    const data = this.storage.load();
-    if (!data.chats[id]) return;
-    const { [id]: _, ...rest } = data.chats;
-    const next: AllChatsData = { ...data, chats: rest };
-    this.storage.saveImmediate(next);
+    await py.deleteChat({ id });
   }
 }
-

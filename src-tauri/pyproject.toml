@@ -6,7 +6,8 @@ requires-python = ">=3.9"
 dependencies = [
     "pytauri == 0.8.*",
     "pydantic == 2.*",
-    "anyio == 4.*"
+    "anyio == 4.*",
+    "SQLAlchemy >= 2, < 3"
 ]  
 
 [project.entry-points.pytauri]

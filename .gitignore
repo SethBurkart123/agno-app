@@ -25,3 +25,6 @@ dist-ssr
 
 .env*
 .next/
+
+__pycache__/
+*.egg-info/
