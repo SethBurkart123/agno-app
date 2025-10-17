@@ -21,9 +21,8 @@ class Chat(Base):
     id: Mapped[str] = mapped_column(String, primary_key=True)
     title: Mapped[str] = mapped_column(String, nullable=False)
     model: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    created_at: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    updated_at: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    # Removed thinking_time persistence
+    createdAt: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    updatedAt: Mapped[Optional[str]] = mapped_column(String, nullable=True)
 
     messages: Mapped[List["Message"]] = relationship(
         back_populates="chat", cascade="all, delete-orphan"
@@ -34,11 +33,11 @@ class Message(Base):
     __tablename__ = "messages"
 
     id: Mapped[str] = mapped_column(String, primary_key=True)
-    chat_id: Mapped[str] = mapped_column(String, ForeignKey("chats.id", ondelete="CASCADE"))
+    chatId: Mapped[str] = mapped_column(String, ForeignKey("chats.id", ondelete="CASCADE"))
     role: Mapped[str] = mapped_column(String, nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
-    created_at: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    tool_calls: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    createdAt: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    toolCalls: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     chat: Mapped[Chat] = relationship(back_populates="messages")
 
@@ -88,23 +87,23 @@ def session(app: Union[App, AppHandle, WebviewWindow]) -> Session:
 
 
 def list_chats(sess: Session) -> List[Chat]:
-    stmt = select(Chat).order_by(Chat.updated_at.desc().nulls_last(), Chat.created_at.desc().nulls_last())
+    stmt = select(Chat).order_by(Chat.updatedAt.desc().nulls_last(), Chat.createdAt.desc().nulls_last())
     return list(sess.scalars(stmt))
 
 
-def get_chat_messages(sess: Session, chat_id: str) -> List[Dict[str, Any]]:
-    stmt = select(Message).where(Message.chat_id == chat_id).order_by(Message.created_at.asc().nulls_last())
+def get_chat_messages(sess: Session, chatId: str) -> List[Dict[str, Any]]:
+    stmt = select(Message).where(Message.chatId == chatId).order_by(Message.createdAt.asc().nulls_last())
     rows = list(sess.scalars(stmt))
     messages: List[Dict[str, Any]] = []
     for r in rows:
-        tool_calls = json.loads(r.tool_calls) if r.tool_calls else None
+        toolCalls = json.loads(r.toolCalls) if r.toolCalls else None
         messages.append(
             {
                 "id": r.id,
                 "role": r.role,
                 "content": r.content,
-                "created_at": r.created_at,
-                "tool_calls": tool_calls,
+                "createdAt": r.createdAt,
+                "toolCalls": toolCalls,
             }
         )
     return messages
@@ -116,15 +115,15 @@ def create_chat(
     id: str,
     title: str,
     model: Optional[str],
-    created_at: str,
-    updated_at: str,
+    createdAt: str,
+    updatedAt: str,
 ) -> None:
     chat = Chat(
         id=id,
         title=title,
         model=model,
-        created_at=created_at,
-        updated_at=updated_at,
+        createdAt=createdAt,
+        updatedAt=updatedAt,
     )
     sess.add(chat)
     sess.commit()
@@ -136,7 +135,7 @@ def update_chat(
     id: str,
     title: Optional[str] = None,
     model: Optional[str] = None,
-    updated_at: Optional[str] = None,
+    updatedAt: Optional[str] = None,
 ) -> None:
     chat: Optional[Chat] = sess.get(Chat, id)
     if not chat:
@@ -145,36 +144,54 @@ def update_chat(
         chat.title = title
     if model is not None:
         chat.model = model
-    if updated_at is not None:
-        chat.updated_at = updated_at
+    if updatedAt is not None:
+        chat.updatedAt = updatedAt
     sess.commit()
 
 
-def replace_chat_messages(
+def append_message(
     sess: Session,
     *,
-    chat_id: str,
-    messages: List[Dict[str, Any]],
+    id: str,
+    chatId: str,
+    role: str,
+    content: str,
+    createdAt: str,
+    toolCalls: Optional[List[Dict[str, Any]]] = None,
 ) -> None:
-    # Delete existing
-    sess.query(Message).filter(Message.chat_id == chat_id).delete()
-    # Insert new
-    for m in messages:
-        sess.add(
-            Message(
-                id=m.get("id"),
-                chat_id=chat_id,
-                role=m.get("role"),
-                content=m.get("content"),
-                created_at=m.get("created_at"),
-                tool_calls=json.dumps(m.get("tool_calls")) if m.get("tool_calls") is not None else None,
-            )
+    """Append a new message to a chat."""
+    sess.add(
+        Message(
+            id=id,
+            chatId=chatId,
+            role=role,
+            content=content,
+            createdAt=createdAt,
+            toolCalls=json.dumps(toolCalls) if toolCalls is not None else None,
         )
+    )
     sess.commit()
 
 
-def delete_chat(sess: Session, *, chat_id: str) -> None:
-    chat = sess.get(Chat, chat_id)
+def update_message_content(
+    sess: Session,
+    *,
+    messageId: str,
+    content: str,
+    toolCalls: Optional[List[Dict[str, Any]]] = None,
+) -> None:
+    """Update the content of an existing message (for streaming updates)."""
+    message: Optional[Message] = sess.get(Message, messageId)
+    if not message:
+        return
+    message.content = content
+    if toolCalls is not None:
+        message.toolCalls = json.dumps(toolCalls)
+    sess.commit()
+
+
+def delete_chat(sess: Session, *, chatId: str) -> None:
+    chat = sess.get(Chat, chatId)
     if chat:
         sess.delete(chat)
         sess.commit()

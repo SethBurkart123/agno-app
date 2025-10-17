@@ -29,9 +29,9 @@ export type Model1 = (string | null)
 export type Id4 = string
 export type Title2 = (string | null)
 export type Model2 = (string | null)
-export type Messages1 = (ChatMessage[] | null)
 export type Id5 = string
 export type RootModelNoneType = null
+export type JavaScriptChannelIdChatEvent = string
 
 /**
  * Commands Input and Output Schemas
@@ -64,6 +64,10 @@ output: RootModelNoneType
 get_chat: {
 input: ChatId
 output: RootModelDictStrAny
+}
+stream_chat: {
+input: JavaScriptChannelIdChatEvent
+output: RootModelNoneType
 }
 }
 export interface Person {
@@ -112,7 +116,6 @@ export interface UpdateChatInput {
 id: Id4
 title?: Title2
 model?: Model2
-messages?: Messages1
 }
 export interface ChatId {
 id: Id5

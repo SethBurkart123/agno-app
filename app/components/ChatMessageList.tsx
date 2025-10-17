@@ -1,21 +1,9 @@
-import React, { useEffect, useRef, useCallback } from "react";
+import React, { useEffect, useRef } from "react";
 import ChatMessage from "./Message";
-import { Message } from "ai";
-
-interface ToolCallData {
-  id: string;
-  toolName: string;
-  toolArgs: Record<string, any>;
-  toolResult?: string;
-  isCompleted: boolean;
-}
-
-interface ExtendedMessage extends Message {
-  toolCalls?: ToolCallData[];
-}
+import { Message } from "@/lib/services/api";
 
 interface ChatMessageListProps {
-  messages: ExtendedMessage[];
+  messages: Message[];
   isLoading: boolean;
   thinkingTimes: Record<string, number> | undefined;
   AssistantMessageActions: React.FC<{ messageIndex: number }>;
@@ -82,7 +70,7 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({ messages, isLoading, 
       isAtBottomRef.current = true;
     } else if (isAtBottomRef.current && endOfMessagesRef.current) {
       console.log('scrolling to bottom');
-      endOfMessagesRef.current.scrollIntoView({ block: 'end' });
+      endOfMessagesRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
     }
   }, [messages, isLoading]);
 
@@ -107,7 +95,7 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({ messages, isLoading, 
             )}
           </div>
         ))}
-      <div ref={endOfMessagesRef} className="h-32" />
+      <div ref={endOfMessagesRef} className="h-8" />
     </>
   );
 };

@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useSearchParams } from "next/navigation";
 import { ChatContextType, AllChatsData } from "@/lib/types/chat";
-import { BackendChatStorageService } from "@/lib/services/backend-chat-storage";
+import { api } from "@/lib/services/api";
 import { useChatOperations } from "@/lib/hooks/useChatOperations";
 import { useModels } from "@/lib/hooks/useModels";
 
@@ -13,14 +13,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const searchParams = useSearchParams();
   const [allChatsData, setAllChatsData] = React.useState<AllChatsData>({ chats: {} });
   const [currentChatId, setCurrentChatId] = React.useState("");
-  const [visualChatId, setVisualChatId] = React.useState("");
-  const [isTransitioning, setIsTransitioning] = React.useState(false);
   const [isLoaded, setIsLoaded] = React.useState(false);
-
-  const storageService = React.useMemo(
-    () => BackendChatStorageService.getInstance(),
-    []
-  );
 
   const { models, selectedModel, setSelectedModel } = useModels();
 
@@ -29,15 +22,12 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     setAllChatsData,
     currentChatId,
     setCurrentChatId,
-    setVisualChatId,
-    setIsTransitioning,
-    storageService,
   });
 
   React.useEffect(() => {
     const loadChats = async () => {
       try {
-        const data = await storageService.load();
+        const data = await api.getAllChats();
         setAllChatsData(data);
         setIsLoaded(true);
       } catch (error) {
@@ -48,17 +38,15 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     };
 
     loadChats();
-  }, [storageService]);
+  }, []);
 
   React.useEffect(() => {
     const chatIdFromUrl = searchParams.get('chatId');
     
     if (chatIdFromUrl && chatIdFromUrl !== currentChatId) {
       setCurrentChatId(chatIdFromUrl);
-      setVisualChatId(chatIdFromUrl);
     } else if (!chatIdFromUrl && currentChatId) {
       setCurrentChatId('');
-      setVisualChatId('');
     }
   }, [searchParams, currentChatId]);
 
@@ -80,31 +68,37 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     return allChatsData.chats[currentChatId].title;
   }, [currentChatId, allChatsData]);
 
+  const refreshChats = React.useCallback(async () => {
+    try {
+      const data = await api.getAllChats();
+      setAllChatsData(data);
+    } catch (error) {
+      console.error("Failed to refresh chats:", error);
+    }
+  }, []);
+
   const value = React.useMemo<ChatContextType>(
     () => ({
       chatId: currentChatId,
-      visualChatId,
       chatTitle,
       chatIds,
       chatsData: allChatsData.chats,
       startNewChat: operations.startNewChat,
-      createNewChat: operations.createNewChat,
-      finalizeNewChat: operations.finalizeNewChat,
       switchChat: operations.switchChat,
       deleteChat: operations.deleteChat,
       renameChat: operations.renameChat,
-      updateChatMessages: operations.updateChatMessages,
+      refreshChats,
       selectedModel,
       setSelectedModel,
       models,
     }),
     [
       currentChatId,
-      visualChatId,
       chatTitle,
       chatIds,
       allChatsData.chats,
       operations,
+      refreshChats,
       selectedModel,
       models,
     ]

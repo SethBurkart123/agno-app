@@ -42,7 +42,7 @@ export default function ChatPanel() {
   return (
     <>
       <div className="overflow-y-scroll flex-1">
-        <div className="top-0 sticky h-4 bg-gradient-to-b from-[#30242A] to-transparent z-20" />
+        <div className="top-0 sticky h-4 bg-gradient-to-b dark:from-[#30242A] from-[#FFFBF5] to-transparent z-20" />
         <div className="flex flex-col h-full">
           <Chat messages={messages} isLoading={isLoading} />
         </div>

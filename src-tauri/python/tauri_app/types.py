@@ -8,6 +8,9 @@ class _BaseModel(BaseModel):
         #
         # See: <https://docs.pydantic.dev/2.10/concepts/alias/#using-an-aliasgenerator>
         alias_generator=to_camel,
+        # Allow constructing models using snake_case field names in Python
+        # when aliases are defined via alias_generator (camelCase for JS).
+        populate_by_name=True,
         # By default, pydantic allows unknown fields,
         # which results in TypeScript types having `[key: string]: unknown`.
         #

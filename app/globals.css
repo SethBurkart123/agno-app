@@ -4,28 +4,6 @@
 
 @custom-variant dark (&:is(.dark *));
 
-::view-transition-old(root),
-::view-transition-new(root) {
-  animation: none;
-  mix-blend-mode: normal;
-}
-
-::view-transition-old(root) {
-  z-index: 9999;
-}
-
-::view-transition-new(root) {
-  z-index: 9999;
-}
-
-.dark::view-transition-old(root) {
-  z-index: 9999;
-}
-
-.dark::view-transition-new(root) {
-  z-index: 9999;
-}
-
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -351,5 +329,14 @@ button {
   }
   100% {
     transform: translateX(200%) skewX(-15deg);
+  }
+}
+
+body {
+  scroll-behavior: smooth;
+  
+  background: var(--sidebar);
+  ::selection {
+    background-color: #f58d737a;
   }
 }

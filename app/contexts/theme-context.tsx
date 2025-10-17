@@ -29,38 +29,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   const setTheme = React.useCallback((newTheme: Theme, x?: number, y?: number) => {
     // Skip transition if View Transitions API is not supported
-    if (!document.startViewTransition) {
-      setThemeState(newTheme);
-      return;
-    }
-
-    const transition = document.startViewTransition(() => {
-      setThemeState(newTheme);
-    });
-
-    // If we have click coordinates, add the mask
-    if (x != null && y != null) {
-      const endRadius = Math.hypot(
-        Math.max(x, innerWidth - x),
-        Math.max(y, innerHeight - y)
-      );
-
-      transition.ready.then(() => {
-        document.documentElement.animate(
-          {
-            clipPath: [
-              `circle(0px at ${x}px ${y}px)`,
-              `circle(${endRadius}px at ${x}px ${y}px)`,
-            ],
-          },
-          {
-            duration: 300,
-            easing: "ease-in",
-            pseudoElement: "::view-transition-new(root)",
-          }
-        );
-      });
-    }
+    setThemeState(newTheme);
   }, []);
 
   // Update the class on the html element whenever theme changes

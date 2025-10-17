@@ -58,3 +58,17 @@ export async function getChat(
 ): Promise<Commands["get_chat"]["output"]> {
     return await pyInvoke("get_chat", body, options);
 }
+
+/**
+ * Stream chat completions via a Channel to the frontend.
+ *
+ * Saves messages incrementally to DB:
+ * - User message saved immediately
+ * - Assistant message created and updated as content streams
+ */
+export async function streamChat(
+    body: Commands["stream_chat"]["input"],
+    options?: InvokeOptions
+): Promise<Commands["stream_chat"]["output"]> {
+    return await pyInvoke("stream_chat", body, options);
+}

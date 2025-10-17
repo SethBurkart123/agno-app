@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { MoreVertical, PlusIcon, Pencil, Trash2, Settings } from "lucide-react";
+import { MoreVertical, PlusIcon, Pencil, Trash2 } from "lucide-react";
 
 import {
   Sidebar,
@@ -32,14 +32,14 @@ export function AppSidebar({
 }: React.ComponentProps<typeof Sidebar>) {
   const {
     chatId: currentChatId,
-    visualChatId,
     chatIds,
     chatsData,
     startNewChat,
     switchChat,
     deleteChat,
-    renameChat
+    renameChat,
    } = useChat();
+   
   const [editingId, setEditingId] = React.useState<string | null>(null);
   const [editTitle, setEditTitle] = React.useState("");
 
@@ -93,7 +93,7 @@ export function AppSidebar({
       <SidebarContent>
         <SidebarMenu className="gap-1 px-2 flex flex-col">
           {orderedChatIds.map((id: string) => {
-            const isActive = visualChatId === id;
+            const isActive = currentChatId === id;
             const title = chatsData[id]?.title || `Chat #${chatIds.indexOf(id) + 1}`;
 
             return (
@@ -123,7 +123,7 @@ export function AppSidebar({
                       <button
                         onClick={() => switchChat(id)}
                         className={clsx(
-                          "flex-1 truncate py-1.5 px-3 rounded-lg text-left text-sm",
+                          "flex-1 truncate py-1.5 px-3 rounded-lg text-left text-sm flex items-center gap-2",
                           isActive
                            ? "bg-sidebar-accent/80 text-sidebar-accent-foreground"
                            : "hover:bg-muted/50",

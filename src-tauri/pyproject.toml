@@ -7,7 +7,9 @@ dependencies = [
     "pytauri == 0.8.*",
     "pydantic == 2.*",
     "anyio == 4.*",
-    "SQLAlchemy >= 2, < 3"
+    "SQLAlchemy >= 2, < 3",
+    "openai >= 1.30.0",
+    "python-dotenv >= 1.0.1"
 ]  
 
 [project.entry-points.pytauri]
