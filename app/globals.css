@@ -335,6 +335,12 @@ button {
 body {
   scroll-behavior: smooth;
   
+  // macos overscroll fix
+  position: fixed;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  
   background: var(--sidebar);
   ::selection {
     background-color: #f58d737a;
