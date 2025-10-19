@@ -29,18 +29,27 @@ export type Id = (string | null)
 export type Title = string
 export type Id1 = string
 export type Role = string
-export type Content = string
-export type Createdat = (string | null)
-export type Toolcalls = (ToolCall[] | null)
-export type Id2 = string
-export type Toolname = string
+export type Content = (string | ContentBlock[])
+export type Type = string
+export type Content1 = (string | null)
+export type Id2 = (string | null)
+export type Toolname = (string | null)
+export type Toolargs = ({
+[k: string]: unknown
+} | null)
 export type Toolresult = (string | null)
 export type Iscompleted = (boolean | null)
+export type Createdat = (string | null)
+export type Toolcalls = (ToolCall[] | null)
+export type Id3 = string
+export type Toolname1 = string
+export type Toolresult1 = (string | null)
+export type Iscompleted1 = (boolean | null)
 export type Messages = ChatMessage[]
 export type Model = (string | null)
 export type Createdat1 = (string | null)
 export type Updatedat = (string | null)
-export type Id3 = (string | null)
+export type Id4 = (string | null)
 export type Title1 = (string | null)
 export type Model1 = (string | null)
 export type Provider3 = string
@@ -49,16 +58,16 @@ export type Toolids2 = string[]
 export type Instructions = string[]
 export type Name1 = (string | null)
 export type Description = (string | null)
-export type Id4 = string
+export type Id5 = string
 export type Title2 = (string | null)
 export type Model2 = (string | null)
-export type Id5 = string
+export type Id6 = string
 export type Chatid = string
 export type Toolids3 = string[]
 export type Chatid1 = string
 export type Provider4 = string
 export type Modelid2 = string
-export type Id6 = string
+export type Id7 = string
 export type Name2 = (string | null)
 export type Description1 = (string | null)
 export type Category = (string | null)
@@ -198,18 +207,27 @@ content: Content
 createdAt?: Createdat
 toolCalls?: Toolcalls
 }
-export interface ToolCall {
-id: Id2
-toolName: Toolname
-toolArgs: Toolargs
+export interface ContentBlock {
+type: Type
+content?: Content1
+id?: Id2
+toolName?: Toolname
+toolArgs?: Toolargs
 toolResult?: Toolresult
 isCompleted?: Iscompleted
 }
-export interface Toolargs {
+export interface ToolCall {
+id: Id3
+toolName: Toolname1
+toolArgs: Toolargs1
+toolResult?: Toolresult1
+isCompleted?: Iscompleted1
+}
+export interface Toolargs1 {
 [k: string]: unknown
 }
 export interface CreateChatInput {
-id?: Id3
+id?: Id4
 title?: Title1
 model?: Model1
 agentConfig?: (AgentConfig | null)
@@ -223,12 +241,12 @@ name?: Name1
 description?: Description
 }
 export interface UpdateChatInput {
-id: Id4
+id: Id5
 title?: Title2
 model?: Model2
 }
 export interface ChatId {
-id: Id5
+id: Id6
 }
 export interface RootModelDictStrAny {
 [k: string]: unknown
@@ -246,7 +264,7 @@ export interface AvailableToolsResponse {
 tools: Tools
 }
 export interface ToolInfo {
-id: Id6
+id: Id7
 name?: Name2
 description?: Description1
 category?: Category

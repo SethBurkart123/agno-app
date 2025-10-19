@@ -12,7 +12,7 @@ interface ChatProps {
 
 export default function Chat({ messages, isLoading }: ChatProps) {
   const AssistantMessageActions = () => {
-    return null;
+    return <></>;
   };
 
   return (
@@ -20,7 +20,6 @@ export default function Chat({ messages, isLoading }: ChatProps) {
       <ChatMessageList 
         messages={messages}
         isLoading={isLoading}
-        thinkingTimes={undefined}
         AssistantMessageActions={AssistantMessageActions}
       />
     </div>
@@ -116,21 +115,20 @@ export function useChatInput() {
 
       const decoder = new TextDecoder();
       const assistantMessageId = crypto.randomUUID();
-      let messageContent = "";
-      let reasoningContent = "";
-      let isReasoningClosed = false;
       
-      const buildAssistantContent = () => {
-        const trimmedReasoning = reasoningContent.trim();
-        let combined = "";
-        if (trimmedReasoning !== "") {
-          combined += `<think>${trimmedReasoning}`;
-          if (isReasoningClosed) {
-            combined += "</think>\n\n";
-          }
+      // Build structured content blocks array
+      const contentBlocks: any[] = [];
+      let currentTextBlock = "";
+      let currentReasoningBlock = "";
+      
+      const flushTextBlock = () => {
+        if (currentTextBlock) {
+          contentBlocks.push({
+            type: "text",
+            content: currentTextBlock
+          });
+          currentTextBlock = "";
         }
-        combined += messageContent;
-        return combined;
       };
 
       // Coalesce streaming updates to ~1 per frame
@@ -140,7 +138,6 @@ export function useChatInput() {
         framePendingRef.current = true;
         requestAnimationFrame(() => {
           framePendingRef.current = false;
-          const combined = buildAssistantContent();
           setMessages(prev => {
             const withoutLast = prev.filter(m => m.id !== assistantMessageId);
             return [
@@ -148,7 +145,7 @@ export function useChatInput() {
               {
                 id: assistantMessageId,
                 role: "assistant",
-                content: combined,
+                content: contentBlocks.length > 0 ? contentBlocks : [{ type: "text", content: currentTextBlock + currentReasoningBlock }],
               },
             ];
           });
@@ -189,48 +186,70 @@ export function useChatInput() {
                   refreshChats();
                 }
                 updateAssistantMessage();
-              } else if (currentEvent === "RunContent") {
-                let needsUpdate = false;
-                if (typeof parsed.reasoningContent === "string" && parsed.reasoningContent.trim() !== "") {
-                  const incoming = parsed.reasoningContent;
-                  if (incoming !== reasoningContent || isReasoningClosed) {
-                    reasoningContent = incoming;
-                    if (isReasoningClosed) {
-                      isReasoningClosed = false;
-                    }
-                    needsUpdate = true;
-                  }
-                }
+              } 
+              else if (currentEvent === "RunContent") {
                 if (parsed.content) {
-                  if (reasoningContent.trim() !== "" && !isReasoningClosed) {
-                    isReasoningClosed = true;
-                  }
-                  messageContent += parsed.content;
-                  needsUpdate = true;
-                }
-                if (needsUpdate) {
+                  currentTextBlock += parsed.content;
                   updateAssistantMessage();
                 }
-              } else if (currentEvent === "RunCompleted") {
-                let needsUpdate = false;
-                if (typeof parsed.reasoningContent === "string" && parsed.reasoningContent.trim() !== "") {
-                  const incoming = parsed.reasoningContent;
-                  if (incoming !== reasoningContent) {
-                    reasoningContent = incoming;
-                    needsUpdate = true;
-                  }
-                }
-                if (reasoningContent.trim() !== "" && !isReasoningClosed) {
-                  isReasoningClosed = true;
-                  needsUpdate = true;
-                }
-                if (parsed.content) {
-                  messageContent += parsed.content;
-                  needsUpdate = true;
-                }
-                if (needsUpdate) {
+              }
+              else if (currentEvent === "ReasoningStarted") {
+                flushTextBlock();
+                updateAssistantMessage();
+              }
+              else if (currentEvent === "ReasoningStep") {
+                if (parsed.reasoningContent) {
+                  currentReasoningBlock += parsed.reasoningContent;
                   updateAssistantMessage();
                 }
+              }
+              else if (currentEvent === "ReasoningCompleted") {
+                if (currentReasoningBlock) {
+                  contentBlocks.push({
+                    type: "reasoning",
+                    content: currentReasoningBlock,
+                    isCompleted: true
+                  });
+                  currentReasoningBlock = "";
+                }
+                updateAssistantMessage();
+              }
+              else if (currentEvent === "ToolCallStarted") {
+                flushTextBlock();
+                if (parsed.tool) {
+                  contentBlocks.push({
+                    type: "tool_call",
+                    id: parsed.tool.id,
+                    toolName: parsed.tool.toolName,
+                    toolArgs: parsed.tool.toolArgs,
+                    isCompleted: false
+                  });
+                  updateAssistantMessage();
+                }
+              }
+              else if (currentEvent === "ToolCallCompleted") {
+                if (parsed.tool) {
+                  // Find and update the tool block
+                  const toolBlock = [...contentBlocks].reverse().find(
+                    (b: any) => b.type === "tool_call" && b.id === parsed.tool.id
+                  );
+                  if (toolBlock) {
+                    toolBlock.toolResult = parsed.tool.toolResult;
+                    toolBlock.isCompleted = true;
+                  }
+                  updateAssistantMessage();
+                }
+              }
+              else if (currentEvent === "RunCompleted") {
+                flushTextBlock();
+                if (currentReasoningBlock) {
+                  contentBlocks.push({
+                    type: "reasoning",
+                    content: currentReasoningBlock,
+                    isCompleted: true
+                  });
+                }
+                updateAssistantMessage();
               }
             } catch (err) {
               console.error("Failed to parse SSE data:", err, "Line:", line);

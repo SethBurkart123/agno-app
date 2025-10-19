@@ -143,11 +143,21 @@ def get_chat_messages(sess: Session, chatId: str) -> List[Dict[str, Any]]:
     messages: List[Dict[str, Any]] = []
     for r in rows:
         toolCalls = json.loads(r.toolCalls) if r.toolCalls else None
+        
+        # Parse content if it's a JSON array (structured content blocks)
+        content = r.content
+        if content and content.strip().startswith('['):
+            try:
+                content = json.loads(content)
+            except Exception:
+                # If parsing fails, keep as string (legacy format)
+                pass
+        
         messages.append(
             {
                 "id": r.id,
                 "role": r.role,
-                "content": r.content,
+                "content": content,
                 "createdAt": r.createdAt,
                 "toolCalls": toolCalls,
             }

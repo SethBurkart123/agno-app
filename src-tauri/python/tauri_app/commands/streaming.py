@@ -1,12 +1,14 @@
 from __future__ import annotations
 
+import json
 import uuid
 from datetime import datetime
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Iterator
 
 from pytauri import AppHandle
 from pytauri.ipc import Channel, JavaScriptChannelId, Headers
 from pytauri.webview import WebviewWindow
+from agno.agent import RunOutputEvent, RunEvent
 
 from .. import db
 from ..models.chat import ChatEvent, ChatMessage
@@ -28,6 +30,10 @@ async def stream_chat(
     - Assistant message created and updated as content streams
     """
     ch: Channel[ChatEvent] = body.channel_on(webview_window.as_ref_webview())
+
+    # delay 15 seconds
+    import asyncio
+    await asyncio.sleep(15)
 
     # Parse payload from headers
     payloadRaw: Optional[str] = None
@@ -52,7 +58,6 @@ async def stream_chat(
     
     if payloadRaw:
         try:
-            import json
             data: Dict[str, Any] = json.loads(payloadRaw)
             if isinstance(data.get("messages"), list):
                 msgs: List[Dict[str, Any]] = data["messages"]
@@ -175,19 +180,22 @@ async def stream_chat(
         
         user_message = messages[-1].content
         
-        # Run agent with streaming
-        # Agno's stream format: yields strings (content deltas) or may not stream at all
-        response_stream = agent.run(user_message, stream=True)
+        # Run with streaming - returns Iterator[RunOutputEvent]
+        response_stream: Iterator[RunOutputEvent] = agent.run(
+            user_message, 
+            stream=True,
+            stream_intermediate_steps=True  # Critical: enables tool events
+        )
         
-        # Parse stream chunks
-        # Agno typically yields either strings or RunResponse-like objects
+        collected_tool_calls = []
+        
+        # Process stream events
         for chunk in response_stream:
-            # Handle string chunks (most common case)
-            if isinstance(chunk, str):
-                if chunk:  # Skip empty strings
-                    assistantContent += chunk
+            # Content chunks
+            if chunk.event == RunEvent.run_content:
+                if chunk.content:
+                    assistantContent += chunk.content
                     
-                    # Update DB with accumulated content
                     sess = db.session(app_handle)
                     try:
                         db.update_message_content(
@@ -198,63 +206,84 @@ async def stream_chat(
                     finally:
                         sess.close()
                     
-                    ch.send_model(ChatEvent(event="RunContent", content=chunk))
+                    ch.send_model(ChatEvent(event="RunContent", content=chunk.content))
             
-            # Handle object chunks (RunResponse or similar)
-            elif chunk is not None:
-                # Try to extract content
-                content = None
-                if hasattr(chunk, 'content'):
-                    content = chunk.content
-                elif hasattr(chunk, 'delta') and hasattr(chunk.delta, 'content'):
-                    content = chunk.delta.content
+            # Tool execution started
+            elif chunk.event == RunEvent.tool_call_started:
+                tool_id = f"{assistantMessageId}-tool-{len(collected_tool_calls)}"
+                print(f"[DEBUG] Tool started: {chunk.tool.tool_name} with args {chunk.tool.tool_args}")
                 
-                if content:
-                    content_str = str(content)
-                    assistantContent += content_str
-                    
-                    # Update DB
-                    sess = db.session(app_handle)
-                    try:
-                        db.update_message_content(
-                            sess,
-                            messageId=assistantMessageId,
-                            content=assistantContent,
-                        )
-                    finally:
-                        sess.close()
-                    
-                    ch.send_model(ChatEvent(event="RunContent", content=content_str))
+                ch.send_model(ChatEvent(
+                    event="ToolCallStarted",
+                    tool={
+                        "id": tool_id,
+                        "toolName": chunk.tool.tool_name,
+                        "toolArgs": chunk.tool.tool_args,
+                        "isCompleted": False,
+                    }
+                ))
+            
+            # Tool execution completed
+            elif chunk.event == RunEvent.tool_call_completed:
+                tool_id = f"{assistantMessageId}-tool-{len(collected_tool_calls)}"
                 
-                # Check for tool calls (if present in chunk)
-                if hasattr(chunk, 'tool_calls') and chunk.tool_calls:
-                    for tool_call in chunk.tool_calls:
-                        tool_data = {
-                            "name": getattr(tool_call, 'name', 'unknown'),
-                            "args": getattr(tool_call, 'arguments', {}),
-                            "result": getattr(tool_call, 'result', None),
-                        }
-                        ch.send_model(ChatEvent(event="ToolCall", tool=tool_data))
-        
-        # Ensure we have some content
-        if not assistantContent:
-            # If streaming didn't produce anything, get the final response
-            # This happens when stream=True doesn't actually stream
-            if hasattr(response_stream, 'content'):
-                assistantContent = str(response_stream.content)
+                tool_call_data = {
+                    "id": tool_id,
+                    "toolName": chunk.tool.tool_name,
+                    "toolArgs": chunk.tool.tool_args,
+                    "toolResult": str(chunk.tool.result) if chunk.tool.result is not None else None,
+                    "isCompleted": True,
+                }
+                
+                print(f"[DEBUG] Tool completed: {tool_call_data}")
+                collected_tool_calls.append(tool_call_data)
+                
+                ch.send_model(ChatEvent(
+                    event="ToolCallCompleted",
+                    tool=tool_call_data
+                ))
+            
+            # Run completed
+            elif chunk.event == RunEvent.run_completed:
+                print(f"[DEBUG] Run completed with {len(collected_tool_calls)} tool calls")
+                
+                # Wrap text content in ContentBlock format
+                content_blocks = [{"type": "text", "content": assistantContent}] if assistantContent else []
+                
+                # Final DB update with tool calls
                 sess = db.session(app_handle)
                 try:
                     db.update_message_content(
                         sess,
                         messageId=assistantMessageId,
-                        content=assistantContent,
+                        content=json.dumps(content_blocks),
+                        toolCalls=collected_tool_calls if collected_tool_calls else None,
                     )
                 finally:
                     sess.close()
-                ch.send_model(ChatEvent(event="RunContent", content=assistantContent))
-        
-        # Signal completion
-        ch.send_model(ChatEvent(event="RunCompleted"))
+                
+                ch.send_model(ChatEvent(event="RunCompleted"))
+            
+            # Errors
+            elif chunk.event == RunEvent.run_error:
+                print(f"[ERROR] Run error: {chunk}")
+                errorMsg = f"\n\n[Error: {chunk}]"
+                assistantContent += errorMsg
+                
+                # Wrap text content in ContentBlock format
+                content_blocks = [{"type": "text", "content": assistantContent}] if assistantContent else []
+                
+                sess = db.session(app_handle)
+                try:
+                    db.update_message_content(
+                        sess,
+                        messageId=assistantMessageId,
+                        content=json.dumps(content_blocks),
+                    )
+                finally:
+                    sess.close()
+                
+                ch.send_model(ChatEvent(event="RunCompleted", content=errorMsg))
         
     except Exception as e:
         import traceback

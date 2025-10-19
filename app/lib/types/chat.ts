@@ -12,6 +12,18 @@ export interface ToolInfo {
   category?: string | null;
 }
 
+export type ContentBlock = 
+  | { type: "text"; content: string }
+  | { 
+      type: "tool_call"; 
+      id: string; 
+      toolName: string; 
+      toolArgs: Record<string, any>; 
+      toolResult?: string; 
+      isCompleted: boolean;
+    }
+  | { type: "reasoning"; content: string; isCompleted: boolean }
+
 export interface AgentConfig {
   provider: string;
   modelId: string;

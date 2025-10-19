@@ -1,9 +1,9 @@
-import type { AllChatsData, ChatData } from '@/lib/types/chat';
+import type { AllChatsData, ChatData, ContentBlock } from '@/lib/types/chat';
 
 export type Message = {
   id: string;
   role: 'user' | 'assistant' | 'system';
-  content: string;
+  content: string | ContentBlock[];
   createdAt?: string;
   toolCalls?: Array<{
     id: string;
@@ -103,6 +103,11 @@ class ApiService {
             modelId: modelId,
             chatId: chatId,
           };
+
+          console.log(chatChannel)
+          console.log(chatChannel.toJSON())
+          console.log(payload)
+          console.log(JSON.stringify(payload))
           
           await pyInvoke('stream_chat', chatChannel.toJSON(), {
             headers: {

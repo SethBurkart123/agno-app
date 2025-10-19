@@ -5,11 +5,10 @@ import { Message } from "@/lib/services/api";
 interface ChatMessageListProps {
   messages: Message[];
   isLoading: boolean;
-  thinkingTimes: Record<string, number> | undefined;
   AssistantMessageActions: React.FC<{ messageIndex: number }>;
 }
 
-const ChatMessageList: React.FC<ChatMessageListProps> = ({ messages, isLoading, thinkingTimes, AssistantMessageActions }) => {
+const ChatMessageList: React.FC<ChatMessageListProps> = ({ messages, isLoading, AssistantMessageActions }) => {
   const endOfMessagesRef = useRef<HTMLDivElement>(null);
   const isAtBottomRef = useRef(true);
   const prevMessagesLengthRef = useRef(messages.length);
@@ -41,10 +40,10 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({ messages, isLoading, 
       const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
       
       if (distanceFromBottom > 70) {
-        console.log('not at bottom');
+        // console.log('not at bottom');
         isAtBottomRef.current = false;
       } else if (distanceFromBottom < 50) {
-        console.log('at bottom');
+        // console.log('at bottom');
         isAtBottomRef.current = true;
       }
     };
@@ -74,6 +73,13 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({ messages, isLoading, 
     }
   }, [messages, isLoading]);
 
+  useEffect(() => {
+    console.log("================================================");
+    console.log(messages);
+    console.log(isLoading);
+    console.log("================================================");
+  }, [messages, isLoading]);
+
   return (
     <>
       {messages
@@ -84,18 +90,13 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({ messages, isLoading, 
               role={m.role as "user" | "assistant"}
               content={m.content}
               isStreaming={isLoading && index === messages.length - 1 && m.role === "assistant"}
-              thinkingTimeMs={thinkingTimes ? thinkingTimes[index] : undefined}
-              toolCalls={m.toolCalls}
             />
             {m.role === "assistant" && !isLoading && (
               <AssistantMessageActions messageIndex={index} />
             )}
-            {m.role === 'assistant' && isLoading && index === messages.length - 2 && (
-              <AssistantMessageActions messageIndex={index} />
-            )}
           </div>
         ))}
-      <div ref={endOfMessagesRef} className="h-8" />
+      <div ref={endOfMessagesRef} className="h-8 -mt-" />
     </>
   );
 };

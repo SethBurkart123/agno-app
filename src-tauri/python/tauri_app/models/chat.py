@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 from pydantic import Field
 
 from ..types import _BaseModel
@@ -14,12 +14,24 @@ class ToolCall(_BaseModel):
     isCompleted: Optional[bool] = None
 
 
+class ContentBlock(_BaseModel):
+    type: str  # "text", "tool_call", "reasoning"
+    # For text blocks
+    content: Optional[str] = None
+    # For tool_call blocks
+    id: Optional[str] = None
+    toolName: Optional[str] = None
+    toolArgs: Optional[Dict[str, Any]] = None
+    toolResult: Optional[str] = None
+    isCompleted: Optional[bool] = None
+
+
 class ChatMessage(_BaseModel):
     id: str
     role: str
-    content: str
+    content: Union[str, List[ContentBlock]]  # Support both formats
     createdAt: Optional[str] = None
-    toolCalls: Optional[List[ToolCall]] = None
+    toolCalls: Optional[List[ToolCall]] = None  # Deprecated, for migration
 
 
 class ChatData(_BaseModel):
@@ -75,6 +87,7 @@ class ChatEvent(_BaseModel):
     reasoningContent: Optional[str] = None
     sessionId: Optional[str] = None
     tool: Optional[Dict[str, Any]] = None
+    error: Optional[str] = None
 
 
 class ToggleChatToolsInput(_BaseModel):
