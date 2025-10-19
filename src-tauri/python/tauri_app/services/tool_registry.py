@@ -169,6 +169,11 @@ class ToolRegistry:
             Returns:
                 The same message
             """
+
+            # Delay 10 seconds
+            import time
+            time.sleep(10)
+
             return f"Echo: {message}"
         
         return echo

@@ -335,7 +335,7 @@ button {
 body {
   scroll-behavior: smooth;
   
-  // macos overscroll fix
+  /* macos overscroll fix */
   position: fixed;
   width: 100%;
   height: 100%;

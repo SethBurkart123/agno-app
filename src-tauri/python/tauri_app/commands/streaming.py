@@ -187,7 +187,19 @@ async def stream_chat(
             stream_intermediate_steps=True  # Critical: enables tool events
         )
         
-        collected_tool_calls = []
+        content_blocks = []
+        current_text_buffer = ""
+        tool_call_counter = 0
+        
+        def flush_text_block():
+            """Add accumulated text as a content block if non-empty."""
+            nonlocal current_text_buffer
+            if current_text_buffer:
+                content_blocks.append({
+                    "type": "text",
+                    "content": current_text_buffer
+                })
+                current_text_buffer = ""
         
         # Process stream events
         for chunk in response_stream:
@@ -195,7 +207,9 @@ async def stream_chat(
             if chunk.event == RunEvent.run_content:
                 if chunk.content:
                     assistantContent += chunk.content
+                    current_text_buffer += chunk.content
                     
+                    # Don't save structured blocks during streaming - just save raw text for incremental updates
                     sess = db.session(app_handle)
                     try:
                         db.update_message_content(
@@ -210,7 +224,7 @@ async def stream_chat(
             
             # Tool execution started
             elif chunk.event == RunEvent.tool_call_started:
-                tool_id = f"{assistantMessageId}-tool-{len(collected_tool_calls)}"
+                tool_id = f"{assistantMessageId}-tool-{tool_call_counter}"
                 print(f"[DEBUG] Tool started: {chunk.tool.tool_name} with args {chunk.tool.tool_args}")
                 
                 ch.send_model(ChatEvent(
@@ -225,9 +239,14 @@ async def stream_chat(
             
             # Tool execution completed
             elif chunk.event == RunEvent.tool_call_completed:
-                tool_id = f"{assistantMessageId}-tool-{len(collected_tool_calls)}"
+                # Flush any pending text before adding tool block
+                flush_text_block()
                 
-                tool_call_data = {
+                tool_id = f"{assistantMessageId}-tool-{tool_call_counter}"
+                tool_call_counter += 1
+                
+                tool_call_block = {
+                    "type": "tool_call",
                     "id": tool_id,
                     "toolName": chunk.tool.tool_name,
                     "toolArgs": chunk.tool.tool_args,
@@ -235,29 +254,33 @@ async def stream_chat(
                     "isCompleted": True,
                 }
                 
-                print(f"[DEBUG] Tool completed: {tool_call_data}")
-                collected_tool_calls.append(tool_call_data)
+                print(f"[DEBUG] Tool completed: {tool_call_block}")
+                content_blocks.append(tool_call_block)
                 
                 ch.send_model(ChatEvent(
                     event="ToolCallCompleted",
-                    tool=tool_call_data
+                    tool=tool_call_block
                 ))
             
             # Run completed
             elif chunk.event == RunEvent.run_completed:
-                print(f"[DEBUG] Run completed with {len(collected_tool_calls)} tool calls")
+                print(f"[DEBUG] Run completed with {len([b for b in content_blocks if b['type'] == 'tool_call'])} tool calls")
                 
-                # Wrap text content in ContentBlock format
-                content_blocks = [{"type": "text", "content": assistantContent}] if assistantContent else []
+                # Flush any remaining text
+                flush_text_block()
                 
-                # Final DB update with tool calls
+                # Ensure we have at least one content block
+                if not content_blocks:
+                    content_blocks = [{"type": "text", "content": ""}]
+                
+                # Final DB update with structured content blocks
                 sess = db.session(app_handle)
                 try:
                     db.update_message_content(
                         sess,
                         messageId=assistantMessageId,
                         content=json.dumps(content_blocks),
-                        toolCalls=collected_tool_calls if collected_tool_calls else None,
+                        toolCalls=None,  # No longer needed - tools are in content blocks
                     )
                 finally:
                     sess.close()
@@ -269,9 +292,14 @@ async def stream_chat(
                 print(f"[ERROR] Run error: {chunk}")
                 errorMsg = f"\n\n[Error: {chunk}]"
                 assistantContent += errorMsg
+                current_text_buffer += errorMsg
                 
-                # Wrap text content in ContentBlock format
-                content_blocks = [{"type": "text", "content": assistantContent}] if assistantContent else []
+                # Flush any remaining text including error
+                flush_text_block()
+                
+                # Ensure we have at least one content block
+                if not content_blocks:
+                    content_blocks = [{"type": "text", "content": errorMsg}]
                 
                 sess = db.session(app_handle)
                 try:
@@ -293,13 +321,26 @@ async def stream_chat(
         errorMsg = f"\n\n[Error: {e}]"
         assistantContent += errorMsg
         
+        # Build error content block
+        error_content_blocks = []
+        if assistantContent.strip():
+            error_content_blocks.append({
+                "type": "text",
+                "content": assistantContent
+            })
+        else:
+            error_content_blocks.append({
+                "type": "text",
+                "content": errorMsg
+            })
+        
         # Save error to DB
         sess = db.session(app_handle)
         try:
             db.update_message_content(
                 sess,
                 messageId=assistantMessageId,
-                content=assistantContent,
+                content=json.dumps(error_content_blocks),
             )
         finally:
             sess.close()
