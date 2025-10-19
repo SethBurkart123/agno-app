@@ -54,6 +54,7 @@ const MemoizedComponents = {
   }),
 };
 
+// @ts-expect-error: props never read
 const CodeBlock = memo(({ node, inline, className, children, ...props }: any) => {
   const codeElement = children as React.ReactElement<{ children?: string }>;
 

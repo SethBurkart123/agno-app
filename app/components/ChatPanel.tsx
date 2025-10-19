@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useRef } from "react";
+import React, { useCallback, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 import ChatInputForm from "@/components/ChatInputForm";
 import { useChat } from "@/contexts/chat-context";

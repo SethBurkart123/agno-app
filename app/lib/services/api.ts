@@ -3,15 +3,8 @@ import type { AllChatsData, ChatData, ContentBlock } from '@/lib/types/chat';
 export type Message = {
   id: string;
   role: 'user' | 'assistant' | 'system';
-  content: string | ContentBlock[];
+  content: ContentBlock[] | string;
   createdAt?: string;
-  toolCalls?: Array<{
-    id: string;
-    toolName: string;
-    toolArgs: Record<string, any>;
-    toolResult?: string;
-    isCompleted: boolean;
-  }>;
 };
 
 async function invoke<T = any>(cmd: string, body?: any): Promise<T> {
@@ -97,8 +90,7 @@ class ApiService {
               id: m.id,
               role: m.role,
               content: m.content,
-              createdAt: m.createdAt,
-              toolCalls: m.toolCalls,
+              createdAt: m.createdAt
             })),
             modelId: modelId,
             chatId: chatId,

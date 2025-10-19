@@ -33,7 +33,7 @@ async def stream_chat(
 
     # delay 15 seconds
     import asyncio
-    await asyncio.sleep(15)
+    await asyncio.sleep(1)
 
     # Parse payload from headers
     payloadRaw: Optional[str] = None

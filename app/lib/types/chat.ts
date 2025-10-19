@@ -23,6 +23,7 @@ export type ContentBlock =
       isCompleted: boolean;
     }
   | { type: "reasoning"; content: string; isCompleted: boolean }
+  | { type: "error"; content: string }
 
 export interface AgentConfig {
   provider: string;

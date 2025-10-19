@@ -102,7 +102,7 @@ export default React.memo(function ChatMessage({
     >
       <div
         className={clsx(
-          "rounded-3xl text-base leading-relaxed overflow-hidden max-w-full min-w-0",
+          "rounded-3xl text-base leading-relaxed max-w-full min-w-0",
           role === "user"
             ? "bg-muted text-muted-foreground px-5 py-2.5 mb-2"
             : "text-card-foreground",
@@ -147,6 +147,38 @@ export default React.memo(function ChatMessage({
                               />
                             );
                           }
+                          continue;
+                        }
+
+                        if (block.type === "error") {
+                          rendered.push(
+                            <div
+                              key={`error-${i}`}
+                              className="my-3 p-4 rounded-lg selection:bg-destructive/20 relative text-destructive overflow-visible before:content-around before:absolute before:top-0 before:left-0 before:w-full before:h-full before:bg-destructive/20 before:rounded-full before:blur-2xl"
+                            >
+                              <div className="flex items-start gap-3">
+                                <svg
+                                  className="w-5 h-5 mt-0.5 flex-shrink-0"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                  xmlns="http://www.w3.org/2000/svg"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                                  />
+                                </svg>
+                                <div className="flex-1">
+                                  <div className="text-sm whitespace-pre-wrap">
+                                    {block.content}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          );
                           continue;
                         }
 

@@ -275,7 +275,7 @@ export function useChatInput() {
       const errorMessage: Message = {
         id: crypto.randomUUID(),
         role: "assistant",
-        content: "Sorry, there was an error processing your request.",
+        content: [{ type: "error", content: "Sorry, there was an error processing your request." }],
       };
       setMessages([...newMessages, errorMessage]);
     } finally {
