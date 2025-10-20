@@ -5,8 +5,9 @@ import uuid
 from datetime import datetime
 from typing import List, Optional, Dict, Any, Iterator
 
+from pydantic import BaseModel
 from pytauri import AppHandle
-from pytauri.ipc import Channel, JavaScriptChannelId, Headers
+from pytauri.ipc import Channel, JavaScriptChannelId
 from pytauri.webview import WebviewWindow
 from agno.agent import RunOutputEvent, RunEvent
 
@@ -16,10 +17,17 @@ from ..services.agent_factory import create_agent_for_chat
 from . import commands
 
 
+class StreamChatRequest(BaseModel):
+    """Request model for stream_chat command."""
+    channel: JavaScriptChannelId[ChatEvent]
+    messages: List[Dict[str, Any]]
+    modelId: Optional[str] = None
+    chatId: Optional[str] = None
+
+
 @commands.command()
 async def stream_chat(
-    body: JavaScriptChannelId[ChatEvent],
-    headers: Headers,
+    body: StreamChatRequest,
     webview_window: WebviewWindow,
     app_handle: AppHandle,
 ) -> None:
@@ -29,52 +37,23 @@ async def stream_chat(
     - User message saved immediately
     - Assistant message created and updated as content streams
     """
-    ch: Channel[ChatEvent] = body.channel_on(webview_window.as_ref_webview())
+    # Convert JavaScriptChannelId to Channel
+    ch: Channel[ChatEvent] = body.channel.channel_on(webview_window.as_ref_webview())
 
-    # delay 15 seconds
-    import asyncio
-    await asyncio.sleep(1)
-
-    # Parse payload from headers
-    payloadRaw: Optional[str] = None
-    try:
-        try:
-            items = headers.items()  # type: ignore[attr-defined]
-        except Exception:
-            items = headers  # type: ignore[assignment]
-        for k, v in items:  # type: ignore[misc]
-            ks = (k.decode("utf-8", "ignore") if isinstance(k, (bytes, bytearray)) else str(k)).lower()
-            if ks == "x-stream-payload":
-                payloadRaw = (
-                    v.decode("utf-8", "ignore") if isinstance(v, (bytes, bytearray)) else str(v)
-                )
-                break
-    except Exception:
-        payloadRaw = None
-
-    messages: List[ChatMessage] = []
-    modelId: Optional[str] = None
-    chatId: Optional[str] = None
+    # Parse messages from request body
+    messages: List[ChatMessage] = [
+        ChatMessage(
+            id=m.get("id"),
+            role=m.get("role"),
+            content=m.get("content", ""),
+            createdAt=m.get("createdAt"),
+            toolCalls=m.get("toolCalls"),
+        )
+        for m in body.messages
+    ]
     
-    if payloadRaw:
-        try:
-            data: Dict[str, Any] = json.loads(payloadRaw)
-            if isinstance(data.get("messages"), list):
-                msgs: List[Dict[str, Any]] = data["messages"]
-                messages = [
-                    ChatMessage(
-                        id=m.get("id"),
-                        role=m.get("role"),
-                        content=m.get("content", ""),
-                        createdAt=m.get("createdAt"),
-                        toolCalls=m.get("toolCalls"),
-                    )
-                    for m in msgs
-                ]
-            modelId = data.get("modelId")
-            chatId = data.get("chatId")
-        except Exception:
-            pass
+    modelId = body.modelId
+    chatId = body.chatId
 
     # Parse provider and model from modelId (format: "provider:modelId")
     provider = "openai"

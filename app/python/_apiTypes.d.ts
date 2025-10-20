@@ -76,6 +76,11 @@ export type Toolids4 = string[]
 export type Provider5 = string
 export type Modelid3 = string
 export type JavaScriptChannelIdChatEvent = string
+export type Messages1 = {
+[k: string]: unknown
+}[]
+export type Modelid4 = (string | null)
+export type Chatid2 = (string | null)
 
 /**
  * Commands Input and Output Schemas
@@ -146,7 +151,7 @@ input: ChatId
 output: ChatAgentConfigResponse
 }
 stream_chat: {
-input: JavaScriptChannelIdChatEvent
+input: StreamChatRequest
 output: RootModelNoneType
 }
 }
@@ -273,4 +278,14 @@ export interface ChatAgentConfigResponse {
 toolIds: Toolids4
 provider: Provider5
 modelId: Modelid3
+}
+/**
+ * Request model for stream_chat command.
+ */
+export interface StreamChatRequest {
+channel: JavaScriptChannelIdChatEvent
+messages: Messages1
+modelId?: Modelid4
+chatId?: Chatid2
+[k: string]: unknown
 }

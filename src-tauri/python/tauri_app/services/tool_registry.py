@@ -135,6 +135,10 @@ class ToolRegistry:
             Returns:
                 Result of the calculation
             """
+
+            import time
+            time.sleep(2)
+            
             try:
                 # Safe eval using only basic operations
                 # Remove dangerous builtins

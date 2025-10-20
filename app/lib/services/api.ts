@@ -85,7 +85,9 @@ class ApiService {
         });
 
         try {
-          const payload = {
+          // Pass channel and payload data in the body object
+          await pyInvoke('stream_chat', {
+            channel: chatChannel.toJSON(),
             messages: messages.map((m) => ({
               id: m.id,
               role: m.role,
@@ -94,17 +96,6 @@ class ApiService {
             })),
             modelId: modelId,
             chatId: chatId,
-          };
-
-          console.log(chatChannel)
-          console.log(chatChannel.toJSON())
-          console.log(payload)
-          console.log(JSON.stringify(payload))
-          
-          await pyInvoke('stream_chat', chatChannel.toJSON(), {
-            headers: {
-              'x-stream-payload': JSON.stringify(payload),
-            },
           });
         } catch (err) {
           controller.error(err);
