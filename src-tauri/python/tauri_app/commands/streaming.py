@@ -11,7 +11,7 @@ from pydantic import BaseModel
 from pytauri import AppHandle
 from pytauri.ipc import Channel, JavaScriptChannelId
 from pytauri.webview import WebviewWindow
-from agno.agent import RunEvent
+from agno.agent import RunEvent, Message
 
 from .. import db
 from ..models.chat import ChatEvent, ChatMessage
@@ -98,15 +98,90 @@ def save_msg_content(app_handle: AppHandle, msg_id: str, content: str):
         db.update_message_content(sess, messageId=msg_id, content=content)
 
 
+def convert_to_agno_messages(chat_msg: ChatMessage) -> List[Message]:
+    """
+    Convert our ChatMessage format to Agno Message format.
+    Handles structured content blocks with tool calls.
+    """
+    if chat_msg.role == "user":
+        content = chat_msg.content
+        if isinstance(content, list):
+            content = json.dumps(content)
+        return [Message(role="user", content=content)]
+    
+    if chat_msg.role == "assistant":
+        content = chat_msg.content
+        
+        if isinstance(content, str):
+            return [Message(role="assistant", content=content)]
+        
+        if not isinstance(content, list):
+            return [Message(role="assistant", content=str(content))]
+        
+        messages = []
+        text_parts = []
+        
+        for block in content:
+            if block.type == "text":
+                text_parts.append(block.content or "")
+            
+            elif block.type == "tool_call":
+                if text_parts:
+                    messages.append(Message(
+                        role="assistant",
+                        content=" ".join(text_parts),
+                        tool_calls=[{
+                            "id": block.id,
+                            "type": "function",
+                            "function": {
+                                "name": block.toolName,
+                                "arguments": json.dumps(block.toolArgs or {})
+                            }
+                        }]
+                    ))
+                    text_parts = []
+                else:
+                    messages.append(Message(
+                        role="assistant",
+                        content=None,
+                        tool_calls=[{
+                            "id": block.id,
+                            "type": "function",
+                            "function": {
+                                "name": block.toolName,
+                                "arguments": json.dumps(block.toolArgs or {})
+                            }
+                        }]
+                    ))
+                
+                if block.toolResult:
+                    messages.append(Message(
+                        role="tool",
+                        tool_call_id=block.id,
+                        content=str(block.toolResult)
+                    ))
+        
+        if text_parts:
+            messages.append(Message(role="assistant", content=" ".join(text_parts)))
+        
+        return messages if messages else [Message(role="assistant", content="")]
+    
+    return []
+
+
 async def handle_content_stream(
     app_handle: AppHandle,
     agent,
-    user_msg: str,
+    messages: List[ChatMessage],
     assistant_msg_id: str,
     ch: Channel[ChatEvent],
 ):
     """Process agent stream and emit events."""
-    response_stream = agent.arun(user_msg, stream=True, stream_intermediate_steps=True)
+    agno_messages = []
+    for msg in messages:
+        agno_messages.extend(convert_to_agno_messages(msg))
+    
+    response_stream = agent.arun(input=agno_messages, stream=True, stream_intermediate_steps=True)
     
     content_blocks = []
     current_text = ""
@@ -217,7 +292,7 @@ async def stream_chat(
         await handle_content_stream(
             app_handle,
             agent,
-            messages[-1].content,
+            messages,
             assistant_msg_id,
             ch,
         )
