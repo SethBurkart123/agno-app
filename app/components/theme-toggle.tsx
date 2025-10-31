@@ -3,15 +3,12 @@
 import * as React from "react";
 import { Moon, Sun } from "lucide-react";
 import { useTheme } from "@/contexts/theme-context";
-import { Button } from "@/components/ui/button";
 
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme();
 
   return (
-    <Button
-      variant="ghost"
-      size="icon"
+    <button
       onClick={(e) => {
         const rect = e.currentTarget.getBoundingClientRect();
         // Use the center of the button as the origin point
@@ -19,11 +16,11 @@ export function ThemeToggle() {
         const y = rect.top + rect.height / 2;
         setTheme(theme === "light" ? "dark" : "light", x, y);
       }}
-      className="size-8"
+      className="p-3 relative rounded-lg hover:bg-muted focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
     >
       <Sun className="size-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-      <Moon className="absolute size-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+      <Moon className="top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 absolute size-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
       <span className="sr-only">Toggle theme</span>
-    </Button>
+    </button>
   );
 } 

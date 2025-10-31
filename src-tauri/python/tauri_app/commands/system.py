@@ -15,7 +15,10 @@ from ..models.chat import (
     DefaultToolsResponse,
     SetDefaultToolsInput,
 )
-from ..services.model_factory import get_available_models as get_models_from_factory
+from ..services.model_factory import (
+    get_available_models as get_models_from_factory,
+)
+from ..config import get_env
 from . import commands
 
 
@@ -68,22 +71,62 @@ async def get_provider_settings(app_handle: AppHandle) -> AllProvidersResponse:
     Returns:
         List of provider configurations
     """
+    # Load provider settings from DB
     sess = db.session(app_handle)
     try:
-        settings = db.get_all_provider_settings(sess)
+        db_settings = db.get_all_provider_settings(sess)
     finally:
         sess.close()
-    
-    providers = [
-        ProviderConfig(
-            provider=provider,
-            api_key=config.get("api_key"),
-            base_url=config.get("base_url"),
-            enabled=config.get("enabled", True),
+
+    # Also include environment-based configurations so the UI can prefill
+    env_settings: dict[str, dict] = {}
+
+    # OpenAI
+    openai_key = get_env("OPENAI_API_KEY")
+    if openai_key:
+        env_settings["openai"] = {
+            "api_key": openai_key,
+            "base_url": get_env("OPENAI_API_BASE_URL") or get_env("OPENAI_BASE_URL"),
+            "enabled": True,
+        }
+
+    # Anthropic
+    anthropic_key = get_env("ANTHROPIC_API_KEY")
+    if anthropic_key:
+        env_settings["anthropic"] = {
+            "api_key": anthropic_key,
+            "enabled": True,
+        }
+
+    # Groq
+    groq_key = get_env("GROQ_API_KEY")
+    if groq_key:
+        env_settings["groq"] = {
+            "api_key": groq_key,
+            "enabled": True,
+        }
+
+    # Ollama (local) — expose host for convenience
+    ollama_host = get_env("OLLAMA_HOST") or "http://localhost:11434"
+    env_settings["ollama"] = {
+        "base_url": ollama_host,
+        "enabled": True,
+    }
+
+    # Merge env + DB with DB taking precedence
+    merged: dict[str, dict] = {**env_settings, **db_settings}
+
+    providers = []
+    for provider, config in merged.items():
+        providers.append(
+            ProviderConfig(
+                provider=provider,
+                api_key=config.get("api_key"),
+                base_url=config.get("base_url"),
+                enabled=config.get("enabled", True),
+            )
         )
-        for provider, config in settings.items()
-    ]
-    
+
     return AllProvidersResponse(providers=providers)
 
 
@@ -144,4 +187,3 @@ async def set_default_tools(body: SetDefaultToolsInput, app_handle: AppHandle) -
         sess.close()
     
     return None
-

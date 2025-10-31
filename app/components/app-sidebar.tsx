@@ -199,23 +199,13 @@ export function AppSidebar({
           </span>
           <div className="flex items-center gap-2">
             <ThemeToggle />
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  className="p-2 rounded-lg hover:bg-muted focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                  aria-label="User menu"
-                >
-                  <MoreVertical className="size-4" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuItem onClick={() => router.push('/settings')}>
-                  <Settings className="mr-2 h-4 w-4" />
-                  Settings
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <button
+              className="p-3 rounded-lg hover:bg-muted focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              aria-label="Settings"
+              onClick={() => router.push('/settings')}
+            >
+              <Settings className="size-4" />
+            </button>
           </div>
         </div>
       </SidebarFooter>
