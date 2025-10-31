@@ -6,12 +6,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { getProviderSettings, saveProviderSettings } from '@/python/apiClient';
-import { Check, Loader2, Settings } from 'lucide-react';
+import { Check, Loader2 } from 'lucide-react';
+import { usePageTitle } from '@/contexts/page-title-context';
 
 interface ProviderConfig {
   provider: string;
-  api_key?: string;
-  base_url?: string;
+  apiKey?: string;
+  baseUrl?: string;
   enabled: boolean;
 }
 
@@ -39,14 +40,16 @@ const PROVIDER_INFO = {
 };
 
 export default function SettingsPage() {
+  const { setTitle } = usePageTitle();
   const [providers, setProviders] = useState<Record<string, ProviderConfig>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState<string | null>(null);
   const [savedProvider, setSavedProvider] = useState<string | null>(null);
 
   useEffect(() => {
+    setTitle('Settings');
     loadSettings();
-  }, []);
+  }, [setTitle]);
 
   const loadSettings = async () => {
     try {
@@ -56,9 +59,9 @@ export default function SettingsPage() {
       response.providers.forEach((p) => {
         providerMap[p.provider] = {
           provider: p.provider,
-          api_key: p.api_key || '',
-          base_url: p.base_url || '',
-          enabled: p.enabled,
+          apiKey: p.apiKey || '',
+          baseUrl: p.baseUrl || '',
+          enabled: Boolean(p.enabled ?? true),
         };
       });
       
@@ -67,8 +70,8 @@ export default function SettingsPage() {
         if (!providerMap[providerKey]) {
           providerMap[providerKey] = {
             provider: providerKey,
-            api_key: '',
-            base_url: providerKey === 'ollama' ? 'http://localhost:11434' : '',
+            apiKey: '',
+            baseUrl: providerKey === 'ollama' ? 'http://localhost:11434' : '',
             enabled: true,
           };
         }
@@ -82,8 +85,8 @@ export default function SettingsPage() {
       Object.keys(PROVIDER_INFO).forEach((providerKey) => {
         defaultProviders[providerKey] = {
           provider: providerKey,
-          api_key: '',
-          base_url: providerKey === 'ollama' ? 'http://localhost:11434' : '',
+          apiKey: '',
+          baseUrl: providerKey === 'ollama' ? 'http://localhost:11434' : '',
           enabled: true,
         };
       });
@@ -102,8 +105,8 @@ export default function SettingsPage() {
       await saveProviderSettings(
         {
           provider: providerKey,
-          api_key: config.api_key || undefined,
-          base_url: config.base_url || undefined,
+          apiKey: config.apiKey || undefined,
+          baseUrl: config.baseUrl || undefined,
           enabled: config.enabled,
         },
         undefined
@@ -130,30 +133,20 @@ export default function SettingsPage() {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen items-center justify-center">
+      <div className="flex flex-1 items-center justify-center p-6">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
   return (
-    <div className="container max-w-4xl py-8 px-4">
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-2">
-          <Settings className="h-8 w-8" />
-          <h1 className="text-3xl font-bold">Settings</h1>
-        </div>
-        <p className="text-muted-foreground">
-          Configure AI provider API keys and settings. Your keys are stored securely in the local database.
-        </p>
-      </div>
-
+    <div className="container max-w-4xl py-6 px-4">
       <div className="space-y-6">
         {Object.entries(PROVIDER_INFO).map(([providerKey, info]) => {
           const config = providers[providerKey] || {
             provider: providerKey,
-            api_key: '',
-            base_url: '',
+            apiKey: '',
+            baseUrl: '',
             enabled: true,
           };
 
@@ -173,9 +166,9 @@ export default function SettingsPage() {
                         id={`${providerKey}-api-key`}
                         type="password"
                         placeholder="sk-..."
-                        value={config.api_key || ''}
+                        value={config.apiKey || ''}
                         onChange={(e) =>
-                          updateProvider(providerKey, 'api_key', e.target.value)
+                          updateProvider(providerKey, 'apiKey', e.target.value)
                         }
                       />
                     </div>
@@ -194,9 +187,9 @@ export default function SettingsPage() {
                             ? 'http://localhost:11434'
                             : 'https://api.example.com'
                         }
-                        value={config.base_url || ''}
+                        value={config.baseUrl || ''}
                         onChange={(e) =>
-                          updateProvider(providerKey, 'base_url', e.target.value)
+                          updateProvider(providerKey, 'baseUrl', e.target.value)
                         }
                       />
                     </div>
@@ -234,4 +227,3 @@ export default function SettingsPage() {
     </div>
   );
 }
-
