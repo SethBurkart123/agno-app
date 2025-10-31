@@ -93,10 +93,9 @@ export function MessageActions({
               size="sm"
               onClick={onContinue}
               disabled={isLoading}
-              className="h-7 px-2 text-xs"
+              className="h-7 w-7 p-0"
             >
               <Play className="size-3.5 mr-1" />
-              Continue
             </Button>
           </TooltipTrigger>
           <TooltipContent>Continue generation</TooltipContent>
@@ -112,7 +111,7 @@ export function MessageActions({
               size="sm"
               onClick={onRetry}
               disabled={isLoading}
-              className="h-7 px-2 text-xs"
+              className="h-7 w-7 p-0"
             >
               <RotateCcw className="size-3.5 mr-1" />
               {hasError && 'Retry'}
