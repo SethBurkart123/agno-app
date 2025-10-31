@@ -10,7 +10,8 @@ import type { Message, MessageSibling } from "@/lib/types/chat";
 async function processMessageStream(
   response: Response,
   onUpdate: (content: any[]) => void,
-  onSessionId?: (sessionId: string) => void
+  onSessionId?: (sessionId: string) => void,
+  onMessageId?: (messageId: string) => void
 ): Promise<void> {
   const reader = response.body?.getReader();
   if (!reader) throw new Error("No response body");
@@ -68,6 +69,9 @@ async function processMessageStream(
             if (currentEvent === "RunStarted" && parsed.sessionId && onSessionId) {
               onSessionId(parsed.sessionId);
               scheduleUpdate();
+            }
+            else if (currentEvent === "AssistantMessageId" && parsed.content && onMessageId) {
+              onMessageId(parsed.content);
             }
             else if (currentEvent === "RunContent" && parsed.content) {
               currentTextBlock += parsed.content;
@@ -338,6 +342,7 @@ export function useChatInput() {
   const [canSendMessage, setCanSendMessage] = useState(true);
   const [reloadTrigger, setReloadTrigger] = useState(0);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const streamingMessageIdRef = useRef<string | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   // Check if we can send messages (last message must be complete)
@@ -409,7 +414,7 @@ export function useChatInput() {
     setIsLoading(true);
 
     abortControllerRef.current = new AbortController();
-    const assistantMessageId = crypto.randomUUID();
+    let assistantMessageId: string | null = null;
     let sessionId: string | null = null;
     let streamingDone = false;
 
@@ -428,7 +433,7 @@ export function useChatInput() {
       await processMessageStream(
         response,
         (content) => {
-          if (streamingDone) return;
+          if (streamingDone || !assistantMessageId) return;
           setMessages(prev => {
             const withoutLast = prev.filter(m => m.id !== assistantMessageId);
             return [
@@ -450,6 +455,11 @@ export function useChatInput() {
             window.history.replaceState(null, '', `/?chatId=${newSessionId}`);
             refreshChats();
           }
+        },
+        (messageId) => {
+          // Capture assistant message ID from backend
+          assistantMessageId = messageId;
+          streamingMessageIdRef.current = messageId;
         }
       );
 
@@ -466,7 +476,7 @@ export function useChatInput() {
       const errorMessage: Message = {
         id: crypto.randomUUID(),
         role: "assistant",
-        content: [{ type: "error", content: "Sorry, there was an error processing your request." }],
+        content: [{ type: "error", content: "Sorry, there was an error processing your request: " + error }],
         isComplete: false,
         sequence: 1,
       };
@@ -474,12 +484,45 @@ export function useChatInput() {
     } finally {
       setIsLoading(false);
       abortControllerRef.current = null;
+      streamingMessageIdRef.current = null;
     }
   };
 
   const triggerReload = useCallback(() => {
     setReloadTrigger(prev => prev + 1);
   }, []);
+
+  const handleStop = useCallback(async () => {
+    const messageId = streamingMessageIdRef.current;
+    
+    if (messageId) {
+      try {
+        const result = await api.cancelRun(messageId);
+        
+        if (result.cancelled) {
+          console.log(`Cancelled run for message ${messageId}`);
+          
+          // Reload messages from backend to sync state
+          if (chatId) {
+            const fullChat = await api.getChat(chatId);
+            setMessages(fullChat.messages || []);
+          }
+        } else {
+          console.log(`Run for message ${messageId} already completed`);
+        }
+      } catch (error) {
+        console.error('Error cancelling run:', error);
+      }
+    }
+    
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    
+    streamingMessageIdRef.current = null;
+    setIsLoading(false);
+  }, [chatId]);
 
   return {
     input,
@@ -491,5 +534,6 @@ export function useChatInput() {
     canSendMessage,
     triggerReload,
     setMessages,
+    handleStop,
   };
 }

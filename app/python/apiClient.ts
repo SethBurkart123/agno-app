@@ -186,6 +186,16 @@ export async function getChatAgentConfig(
     return await pyInvoke("get_chat_agent_config", body, options);
 }
 
+/**
+ * Cancel an active streaming run. Returns {cancelled: bool}
+ */
+export async function cancelRun(
+    body: Commands["cancel_run"]["input"],
+    options?: InvokeOptions
+): Promise<Commands["cancel_run"]["output"]> {
+    return await pyInvoke("cancel_run", body, options);
+}
+
 export async function streamChat(
     body: Commands["stream_chat"]["input"],
     options?: InvokeOptions

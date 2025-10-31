@@ -18,7 +18,7 @@ export default function ChatPanel() {
   const { selectedModel, setSelectedModel, models } = useChat();
 
   // Own streaming + input state locally inside this subtree
-  const { input, handleInputChange, handleSubmit, isLoading, inputRef, messages, canSendMessage, triggerReload, setMessages } = useChatInput();
+  const { input, handleInputChange, handleSubmit, isLoading, inputRef, messages, canSendMessage, triggerReload, setMessages, handleStop } = useChatInput();
 
   // Refresh messages callback for branch operations
   const handleRefreshMessages = useCallback(async () => {
@@ -74,6 +74,7 @@ export default function ChatPanel() {
           models={models}
           getModelName={getModelName}
           canSendMessage={canSendMessage}
+          onStop={handleStop}
         />
       </div>
     </>

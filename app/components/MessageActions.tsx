@@ -1,4 +1,5 @@
-import { ChevronLeft, ChevronRight, RotateCcw, Play, Edit2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, RotateCcw, Play, Edit2, Copy, Check } from 'lucide-react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import type { Message, MessageSibling } from '@/lib/types/chat';
@@ -22,6 +23,7 @@ export function MessageActions({
   onNavigate,
   isLoading = false,
 }: MessageActionsProps) {
+  const [copied, setCopied] = useState(false);
   const currentIndex = siblings.findIndex(s => s.id === message.id);
   const hasPrevSibling = currentIndex > 0;
   const hasNextSibling = currentIndex < siblings.length - 1;
@@ -39,12 +41,49 @@ export function MessageActions({
     }
   };
 
+  const handleCopy = async () => {
+    let textToCopy = '';
+    
+    if (typeof message.content === 'string') {
+      textToCopy = message.content;
+    } else if (Array.isArray(message.content)) {
+      // Extract text from content blocks
+      textToCopy = message.content
+        .filter(block => block.type === 'text')
+        .map(block => block.content)
+        .join('\n\n');
+    }
+    
+    try {
+      await navigator.clipboard.writeText(textToCopy);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
+
   // Check if message has an error
   const hasError = Array.isArray(message.content) && 
     message.content.some(block => block.type === 'error');
 
   return (
     <div className="flex items-center gap-1">
+      {/* Copy button - available for all messages */}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleCopy}
+            className="h-7 w-7 p-0"
+          >
+            {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>{copied ? 'Copied!' : 'Copy message'}</TooltipContent>
+      </Tooltip>
+
       {/* Continue button for incomplete assistant messages */}
       {!message.isComplete && message.role === 'assistant' && onContinue && (
         <Tooltip>

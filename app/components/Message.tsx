@@ -103,7 +103,8 @@ export default React.memo(function ChatMessage({
     };
   }, [isStreaming, content]);
 
-  const showActions = message && (onContinue || onRetry || onEdit || (siblings && siblings.length > 1));
+  // Always show actions if we have a message (Copy is always available)
+  const showActions = !!message;
 
   return (
     <div
@@ -112,19 +113,19 @@ export default React.memo(function ChatMessage({
         role === "user" ? "justify-end" : "justify-start"
       )}
     >
-      <div
-        className={clsx(
-          "rounded-3xl text-base leading-relaxed max-w-full min-w-0 relative",
-          role === "user"
-            ? "bg-muted text-muted-foreground px-5 py-2.5 mb-2"
-            : "text-card-foreground",
-          role === "assistant" &&
-            "prose prose-zinc dark:prose-invert prose-p:my-2 prose-li:my-0.5 px-2 py-2.5 pb-8 w-full"
-        )}
-      >
-        {role === "user" && <p>{typeof content === "string" ? content : ""}</p>}
-
-        {role === "assistant" && (
+      <div className={`relative mb-2 ${role === "assistant" && "w-full"}`}>
+        {/* Message bubble - different styling based on role */}
+        {role === "user" ? (
+          <div className="rounded-3xl text-base leading-relaxed bg-muted text-muted-foreground px-5 py-2.5">
+            <p>{typeof content === "string" ? content : ""}</p>
+          </div>
+        ) : (
+          <div
+            className={clsx(
+              "rounded-3xl text-base leading-relaxed max-w-full min-w-0 text-card-foreground",
+              "prose prose-zinc dark:prose-invert prose-p:my-2 prose-li:my-0.5 px-2 py-2.5 pb-8 w-full"
+            )}
+          >
           <div
             ref={contentRef}
             className="relative assistant-message w-full prose !max-w-none dark:prose-invert prose-zinc"
@@ -279,16 +280,19 @@ export default React.memo(function ChatMessage({
               </>
             )}
           </div>
+          </div>
         )}
         
-        {/* Message Actions - positioned absolutely, visible on hover (or always visible for last assistant message) */}
+        {/* Message Actions - consistent positioning for all messages */}
         {showActions && !isStreaming && (
           <div className={clsx(
-            "absolute bottom-1 flex items-center gap-1 transition-opacity duration-200",
-            role === "user" ? "right-2" : "left-2",
-            isLastAssistantMessage && role === "assistant" 
-              ? "opacity-100" 
-              : "opacity-0 group-hover/message:opacity-100"
+            "absolute flex items-center gap-1 transition-opacity duration-200",
+            role === "user" ? "right-2 -bottom-1" : "left-2 bottom-1",
+            role === "user" 
+              ? "opacity-0 group-hover/message:opacity-100 translate-y-full"
+              : isLastAssistantMessage
+                ? "opacity-100"
+                : "opacity-0 group-hover/message:opacity-100"
           )}>
             <MessageActions
               message={message!}

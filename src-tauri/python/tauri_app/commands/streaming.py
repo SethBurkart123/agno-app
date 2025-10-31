@@ -20,6 +20,9 @@ from . import commands
 
 from rich import print
 
+# Global storage for active run IDs by message ID
+_active_runs: Dict[str, tuple] = {}  # message_id -> (run_id, agent)
+
 
 def parse_model_id(model_id: Optional[str]) -> tuple[str, str]:
     """Parse 'provider:model' format."""
@@ -206,6 +209,7 @@ async def handle_content_stream(
     current_text = ""
     tool_counter = 0
     had_error = False
+    run_id = None
     
     def flush_text():
         nonlocal current_text
@@ -222,6 +226,27 @@ async def handle_content_stream(
         return json.dumps(temp_blocks)
     
     async for chunk in response_stream:
+        # Capture run_id from first event
+        if not run_id and hasattr(chunk, 'run_id') and chunk.run_id:
+            run_id = chunk.run_id
+            _active_runs[assistant_msg_id] = (run_id, agent)
+            print(f"[stream] Captured run_id {run_id} for message {assistant_msg_id}")
+        
+        if chunk.event == RunEvent.run_cancelled:
+            print(f"[stream] Run cancelled: {chunk.run_id}")
+            flush_text()
+            await asyncio.to_thread(save_msg_content, app_handle, assistant_msg_id, save_current_state())
+            
+            # Mark as complete and clean up
+            with db.db_session(app_handle) as sess:
+                db.mark_message_complete(sess, assistant_msg_id)
+            
+            if assistant_msg_id in _active_runs:
+                del _active_runs[assistant_msg_id]
+            
+            ch.send_model(ChatEvent(event="RunCancelled"))
+            return
+        
         if chunk.event == RunEvent.run_content:
             if chunk.content:
                 current_text += chunk.content
@@ -278,6 +303,10 @@ async def handle_content_stream(
             had_error = True
             return
     
+    # Clean up run tracking
+    if assistant_msg_id in _active_runs:
+        del _active_runs[assistant_msg_id]
+    
     if not had_error:
         with db.db_session(app_handle) as sess:
             message = sess.get(db.Message, assistant_msg_id)
@@ -290,6 +319,39 @@ class StreamChatRequest(BaseModel):
     messages: List[Dict[str, Any]]
     modelId: Optional[str] = None
     chatId: Optional[str] = None
+
+
+class CancelRunRequest(BaseModel):
+    messageId: str
+
+
+@commands.command()
+async def cancel_run(body: CancelRunRequest, app_handle: AppHandle) -> dict:
+    """Cancel an active streaming run. Returns {cancelled: bool}"""
+    message_id = body.messageId
+    
+    if message_id not in _active_runs:
+        print(f"[cancel_run] No active run found for message {message_id}")
+        return {"cancelled": False}
+    
+    run_id, agent = _active_runs[message_id]
+    
+    try:
+        print(f"[cancel_run] Cancelling run {run_id} for message {message_id}")
+        agent.cancel_run(run_id)
+        
+        # Mark message as complete in database
+        with db.db_session(app_handle) as sess:
+            db.mark_message_complete(sess, message_id)
+        
+        # Clean up tracking
+        del _active_runs[message_id]
+        
+        print(f"[cancel_run] Successfully cancelled run {run_id}")
+        return {"cancelled": True}
+    except Exception as e:
+        print(f"[cancel_run] Error cancelling run: {e}")
+        return {"cancelled": False}
 
 
 @commands.command()
@@ -325,6 +387,9 @@ async def stream_chat(
     ch.send_model(ChatEvent(event="RunStarted", sessionId=chat_id))
     
     assistant_msg_id = init_assistant_msg(app_handle, chat_id, parent_id)
+    
+    # Emit the assistant message ID for frontend tracking
+    ch.send_model(ChatEvent(event="AssistantMessageId", content=assistant_msg_id))
     
     try:
         agent = create_agent_for_chat(chat_id, app_handle)

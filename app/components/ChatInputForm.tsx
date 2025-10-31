@@ -6,6 +6,7 @@ import {
   Sparkles,
   MoreHorizontal,
   ArrowUp,
+  Square,
 } from "lucide-react";
 import clsx from "clsx";
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
@@ -24,6 +25,7 @@ interface ChatInputFormProps {
   models: ModelInfo[];
   getModelName?: (modelId: string) => string;
   canSendMessage?: boolean;
+  onStop?: () => void;
 }
 
 const MAX_HEIGHT = 200;
@@ -209,6 +211,7 @@ const ChatInputForm: React.FC<ChatInputFormProps> = React.memo(({
   setSelectedModel,
   models,
   canSendMessage = true,
+  onStop,
 }) => {
   const { chatId } = useChat();
   const [isToolSelectorOpen, setIsToolSelectorOpen] = useState(false);
@@ -309,17 +312,28 @@ const ChatInputForm: React.FC<ChatInputFormProps> = React.memo(({
 
             <div className="flex-1" />
 
-            <Button
-              type="submit"
-              size="icon"
-              className={clsx(
-                "flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground hover:bg-primary/90",
-                input.trim() && !isLoading && canSendMessage ? "opacity-100" : "cursor-not-allowed opacity-50"
-              )}
-              disabled={!input.trim() || isLoading || !canSendMessage}
-            >
-              <ArrowUp className="size-5.5" />
-            </Button>
+            {isLoading ? (
+              <Button
+                type="button"
+                size="icon"
+                onClick={onStop}
+                className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
+              >
+                <Square className="size-4" fill="currentColor" />
+              </Button>
+            ) : (
+              <Button
+                type="submit"
+                size="icon"
+                className={clsx(
+                  "flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground hover:bg-primary/90",
+                  input.trim() && canSendMessage ? "opacity-100" : "cursor-not-allowed opacity-50"
+                )}
+                disabled={!input.trim() || !canSendMessage}
+              >
+                <ArrowUp className="size-5.5" />
+              </Button>
+            )}
           </LayoutGroup>
         </LayoutGroup>
       </div>

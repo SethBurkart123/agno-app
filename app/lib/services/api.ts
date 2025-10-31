@@ -267,6 +267,10 @@ class ApiService {
   async getMessageSiblings(messageId: string): Promise<MessageSibling[]> {
     return invoke<MessageSibling[]>('get_message_siblings', { messageId });
   }
+
+  async cancelRun(messageId: string): Promise<{ cancelled: boolean }> {
+    return invoke<{ cancelled: boolean }>('cancel_run', { messageId });
+  }
 }
 
 export const api = ApiService.getInstance();

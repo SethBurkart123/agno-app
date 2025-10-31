@@ -75,23 +75,24 @@ export type Tools = ToolInfo[]
 export type Toolids4 = string[]
 export type Provider5 = string
 export type Modelid3 = string
+export type Messageid = string
 export type JavaScriptChannelIdChatEvent = string
 export type Messages1 = {
 [k: string]: unknown
 }[]
 export type Modelid4 = (string | null)
 export type Chatid2 = (string | null)
-export type Messageid = string
-export type Chatid3 = string
 export type Messageid1 = string
-export type Chatid4 = string
+export type Chatid3 = string
 export type Messageid2 = string
+export type Chatid4 = string
+export type Messageid3 = string
 export type Newcontent = string
 export type Chatid5 = string
-export type Messageid3 = string
+export type Messageid4 = string
 export type Siblingid = string
 export type Chatid6 = string
-export type Messageid4 = string
+export type Messageid5 = string
 export type Id8 = string
 export type Sequence = number
 export type Isactive = boolean
@@ -164,6 +165,10 @@ output: AvailableToolsResponse
 get_chat_agent_config: {
 input: ChatId
 output: ChatAgentConfigResponse
+}
+cancel_run: {
+input: CancelRunRequest
+output: RootModelDict
 }
 stream_chat: {
 input: StreamChatRequest
@@ -314,6 +319,13 @@ toolIds: Toolids4
 provider: Provider5
 modelId: Modelid3
 }
+export interface CancelRunRequest {
+messageId: Messageid
+[k: string]: unknown
+}
+export interface RootModelDict {
+[k: string]: unknown
+}
 export interface StreamChatRequest {
 channel: JavaScriptChannelIdChatEvent
 messages: Messages1
@@ -322,32 +334,32 @@ chatId?: Chatid2
 [k: string]: unknown
 }
 export interface ContinueMessageRequest {
-messageId: Messageid
+messageId: Messageid1
 chatId: Chatid3
 channel: JavaScriptChannelIdChatEvent
 [k: string]: unknown
 }
 export interface RetryMessageRequest {
-messageId: Messageid1
+messageId: Messageid2
 chatId: Chatid4
 channel: JavaScriptChannelIdChatEvent
 [k: string]: unknown
 }
 export interface EditUserMessageRequest {
-messageId: Messageid2
+messageId: Messageid3
 newContent: Newcontent
 chatId: Chatid5
 channel: JavaScriptChannelIdChatEvent
 [k: string]: unknown
 }
 export interface SwitchToSiblingRequest {
-messageId: Messageid3
+messageId: Messageid4
 siblingId: Siblingid
 chatId: Chatid6
 [k: string]: unknown
 }
 export interface GetMessageSiblingsRequest {
-messageId: Messageid4
+messageId: Messageid5
 [k: string]: unknown
 }
 export interface MessageSiblingInfo {
