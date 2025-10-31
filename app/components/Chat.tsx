@@ -28,13 +28,8 @@ async function processMessageStream(
     }
   };
 
-  // Coalesce updates to ~1 per frame for smooth rendering
-  const framePendingRef = { current: false };
   const scheduleUpdate = () => {
-    if (framePendingRef.current) return;
-    framePendingRef.current = true;
     requestAnimationFrame(() => {
-      framePendingRef.current = false;
       const content = contentBlocks.length > 0
         ? [...contentBlocks]
         : [{ type: "text", content: currentTextBlock + currentReasoningBlock }];
@@ -144,186 +139,22 @@ async function processMessageStream(
 interface ChatProps {
   messages: Message[];
   isLoading: boolean;
-  onRefreshMessages: () => Promise<void>;
-  onUpdateMessages?: (updater: (prev: Message[]) => Message[]) => void;
+  messageSiblings: Record<string, MessageSibling[]>;
+  onContinue: (messageId: string) => void;
+  onRetry: (messageId: string) => void;
+  onEdit: (messageId: string) => void;
+  onNavigate: (messageId: string, siblingId: string) => void;
 }
 
-export default function Chat({ messages, isLoading, onRefreshMessages, onUpdateMessages }: ChatProps) {
-  const { chatId } = useChat();
-  const [messageSiblings, setMessageSiblings] = useState<Record<string, MessageSibling[]>>({});
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
-
-  // Load sibling information for all messages
-  useEffect(() => {
-    const loadSiblings = async () => {
-      const siblingsMap: Record<string, MessageSibling[]> = {};
-      
-      for (const msg of messages) {
-        try {
-          const siblings = await api.getMessageSiblings(msg.id);
-          siblingsMap[msg.id] = siblings;
-        } catch (error) {
-          console.error(`Failed to load siblings for message ${msg.id}:`, error);
-          siblingsMap[msg.id] = [];
-        }
-      }
-      
-      setMessageSiblings(siblingsMap);
-    };
-
-    if (messages.length > 0) {
-      loadSiblings();
-    }
-  }, [messages]);
-
-  const handleContinue = useCallback(async (messageId: string) => {
-    if (!chatId || !onUpdateMessages) return;
-
-    setActionLoading(messageId);
-    let streamingDone = false;
-
-    try {
-      const response = await api.continueMessage(messageId, chatId);
-
-      // Stream with live updates
-      await processMessageStream(response, (content) => {
-        if (streamingDone) return;
-        onUpdateMessages(prev =>
-          prev.map(m => m.id === messageId
-            ? { ...m, content, isComplete: false }
-            : m
-          )
-        );
-      });
-
-      // Final refresh to get authoritative state
-      streamingDone = true;
-      await onRefreshMessages();
-    } catch (error) {
-      console.error('Failed to continue message:', error);
-    } finally {
-      setActionLoading(null);
-    }
-  }, [chatId, onRefreshMessages, onUpdateMessages]);
-
-  const handleRetry = useCallback(async (messageId: string) => {
-    if (!chatId || !onUpdateMessages) return;
-
-    setActionLoading(messageId);
-    let streamingDone = false;
-
-    const tempAssistantMessageId = crypto.randomUUID();
-    let currentAssistantMessageId = tempAssistantMessageId;
-
-    try {
-      const response = await api.retryMessage(messageId, chatId);
-
-      // Stream with live updates - add NEW sibling message
-      await processMessageStream(response, (content) => {
-        if (streamingDone) return;
-        onUpdateMessages(prev => {
-          // Find the message being retried
-          const retryIndex = prev.findIndex(m => m.id === messageId);
-          if (retryIndex === -1) return prev;
-
-          // Remove all messages from the retried message onwards
-          // and add the new streaming assistant message
-          const upToParent = prev.slice(0, retryIndex);
-          return [
-            ...upToParent,
-            {
-              id: currentAssistantMessageId,
-              role: 'assistant',
-              content,
-              isComplete: false,
-              sequence: 1,
-            } as Message,
-          ];
-        });
-      },
-      undefined,
-      (assistantId) => {
-        // Switch to backend-assigned message ID mid-stream
-        currentAssistantMessageId = assistantId;
-      });
-
-      // Final refresh to get authoritative state
-      streamingDone = true;
-      await onRefreshMessages();
-    } catch (error) {
-      console.error('Failed to retry message:', error);
-    } finally {
-      setActionLoading(null);
-    }
-  }, [chatId, onRefreshMessages, onUpdateMessages]);
-
-  const handleEdit = useCallback(async (messageId: string) => {
-    // TODO: Implement edit UI (inline textarea)
-    const newContent = prompt('Edit your message:');
-    if (!newContent || !chatId || !onUpdateMessages) return;
-
-    setActionLoading(messageId);
-    let streamingDone = false;
-    const newUserMessageId = crypto.randomUUID();
-    const tempAssistantMessageId = crypto.randomUUID();
-    let currentAssistantMessageId = tempAssistantMessageId;
-
-    try {
-      const response = await api.editUserMessage(messageId, newContent, chatId);
-
-      // Stream with live updates - replace with NEW user message + assistant response
-      await processMessageStream(response, (content) => {
-        if (streamingDone) return;
-        onUpdateMessages(prev => {
-          const editIndex = prev.findIndex(m => m.id === messageId);
-          if (editIndex === -1) return prev;
-
-          // Remove from the edited message onwards and add new sibling branch
-          const upToParent = prev.slice(0, editIndex);
-          return [
-            ...upToParent,
-            {
-              id: newUserMessageId,
-              role: 'user',
-              content: newContent,
-              isComplete: true,
-              sequence: 1,
-            } as Message,
-            {
-              id: currentAssistantMessageId,
-              role: 'assistant',
-              content,
-              isComplete: false,
-              sequence: 1,
-            } as Message,
-          ];
-        });
-      },
-      undefined,
-      (assistantId) => {
-        currentAssistantMessageId = assistantId;
-      });
-
-      // Final refresh to get authoritative state
-      streamingDone = true;
-      await onRefreshMessages();
-    } catch (error) {
-      console.error('Failed to edit message:', error);
-    } finally {
-      setActionLoading(null);
-    }
-  }, [chatId, onRefreshMessages, onUpdateMessages]);
-
-  const handleNavigate = useCallback(async (messageId: string, siblingId: string) => {
-    if (!chatId) return;
-
-    try {
-      await api.switchToSibling(messageId, siblingId, chatId);
-      await onRefreshMessages();
-    } catch (error) {
-      console.error('Failed to switch sibling:', error);
-    }
-  }, [chatId, onRefreshMessages]);
+export default function Chat({ 
+  messages, 
+  isLoading, 
+  messageSiblings,
+  onContinue,
+  onRetry,
+  onEdit,
+  onNavigate,
+}: ChatProps) {
 
   return (
     <div className="flex-1 px-4 py-6 max-w-[50rem] w-full mx-auto">
@@ -331,11 +162,11 @@ export default function Chat({ messages, isLoading, onRefreshMessages, onUpdateM
         messages={messages}
         isLoading={isLoading}
         messageSiblings={messageSiblings}
-        onContinue={handleContinue}
-        onRetry={handleRetry}
-        onEdit={handleEdit}
-        onNavigate={handleNavigate}
-        actionLoading={actionLoading}
+        onContinue={onContinue}
+        onRetry={onRetry}
+        onEdit={onEdit}
+        onNavigate={onNavigate}
+        actionLoading={null}
       />
     </div>
   );
@@ -353,9 +184,47 @@ export function useChatInput() {
   const [isLoading, setIsLoading] = useState(false);
   const [canSendMessage, setCanSendMessage] = useState(true);
   const [reloadTrigger, setReloadTrigger] = useState(0);
+  const [messageSiblings, setMessageSiblings] = useState<Record<string, MessageSibling[]>>({});
   const abortControllerRef = useRef<AbortController | null>(null);
   const streamingMessageIdRef = useRef<string | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  // Helper: stream a response and handle all the state updates
+  const streamAction = async (
+    response: Response,
+    onStreamUpdate: (content: any[]) => void,
+    onBackendMessageId?: (id: string) => void
+  ) => {
+    setIsLoading(true);
+    abortControllerRef.current = new AbortController();
+    streamingMessageIdRef.current = null;
+    let streamingDone = false;
+
+    try {
+      await processMessageStream(
+        response,
+        (content) => {
+          if (streamingDone) return;
+          onStreamUpdate(content);
+        },
+        undefined,
+        (messageId) => {
+          streamingMessageIdRef.current = messageId;
+          onBackendMessageId?.(messageId);
+        }
+      );
+
+      streamingDone = true;
+      if (chatId) {
+        const fullChat = await api.getChat(chatId);
+        setMessages(fullChat.messages || []);
+      }
+    } finally {
+      setIsLoading(false);
+      abortControllerRef.current = null;
+      streamingMessageIdRef.current = null;
+    }
+  };
 
   // Check if we can send messages (last message must be complete)
   useEffect(() => {
@@ -397,6 +266,29 @@ export function useChatInput() {
     
     loadChatMessages();
   }, [chatId, reloadTrigger]);
+
+  // Load sibling information for all messages
+  useEffect(() => {
+    const loadSiblings = async () => {
+      const siblingsMap: Record<string, MessageSibling[]> = {};
+      
+      for (const msg of messages) {
+        try {
+          const siblings = await api.getMessageSiblings(msg.id);
+          siblingsMap[msg.id] = siblings;
+        } catch (error) {
+          console.error(`Failed to load siblings for message ${msg.id}:`, error);
+          siblingsMap[msg.id] = [];
+        }
+      }
+      
+      setMessageSiblings(siblingsMap);
+    };
+
+    if (messages.length > 0) {
+      loadSiblings();
+    }
+  }, [messages]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value);
@@ -504,6 +396,102 @@ export function useChatInput() {
     setReloadTrigger(prev => prev + 1);
   }, []);
 
+  const handleContinue = useCallback(async (messageId: string) => {
+    if (!chatId) return;
+
+    try {
+      const response = await api.continueMessage(messageId, chatId);
+      await streamAction(
+        response,
+        (content) => setMessages(prev =>
+          prev.map(m => m.id === messageId ? { ...m, content, isComplete: false } : m)
+        )
+      );
+    } catch (error) {
+      console.error('Failed to continue message:', error);
+    }
+  }, [chatId]);
+
+  const handleRetry = useCallback(async (messageId: string) => {
+    if (!chatId) return;
+
+    const tempId = crypto.randomUUID();
+    
+    setMessages(prev => {
+      const retryIndex = prev.findIndex(m => m.id === messageId);
+      if (retryIndex === -1) return prev;
+      
+      return [
+        ...prev.slice(0, retryIndex),
+        {
+          id: tempId,
+          role: 'assistant',
+          content: [{ type: "text", content: "" }],
+          isComplete: false,
+          sequence: 1,
+        } as Message,
+      ];
+    });
+
+    try {
+      const response = await api.retryMessage(messageId, chatId);
+      await streamAction(
+        response,
+        (content) => setMessages(prev => {
+          const updated = [...prev];
+          updated[updated.length - 1] = { ...updated[updated.length - 1], content, isComplete: false };
+          return updated;
+        })
+      );
+    } catch (error) {
+      console.error('Failed to retry message:', error);
+    }
+  }, [chatId]);
+
+  const handleEdit = useCallback(async (messageId: string) => {
+    const newContent = prompt('Edit your message:');
+    if (!newContent || !chatId) return;
+
+    const userMsgId = crypto.randomUUID();
+    const assistantTempId = crypto.randomUUID();
+
+    setMessages(prev => {
+      const editIndex = prev.findIndex(m => m.id === messageId);
+      if (editIndex === -1) return prev;
+      
+      return [
+        ...prev.slice(0, editIndex),
+        { id: userMsgId, role: 'user', content: newContent, isComplete: true, sequence: 1 } as Message,
+        { id: assistantTempId, role: 'assistant', content: [{ type: "text", content: "" }], isComplete: false, sequence: 1 } as Message,
+      ];
+    });
+
+    try {
+      const response = await api.editUserMessage(messageId, newContent, chatId);
+      await streamAction(
+        response,
+        (content) => setMessages(prev => {
+          const updated = [...prev];
+          updated[updated.length - 1] = { ...updated[updated.length - 1], content, isComplete: false };
+          return updated;
+        })
+      );
+    } catch (error) {
+      console.error('Failed to edit message:', error);
+    }
+  }, [chatId]);
+
+  const handleNavigate = useCallback(async (messageId: string, siblingId: string) => {
+    if (!chatId) return;
+
+    try {
+      await api.switchToSibling(messageId, siblingId, chatId);
+      triggerReload();
+    } catch (error) {
+      console.error('Failed to switch sibling:', error);
+    }
+  }, [chatId, triggerReload]);
+
   const handleStop = useCallback(async () => {
     const messageId = streamingMessageIdRef.current;
     
@@ -547,5 +535,10 @@ export function useChatInput() {
     triggerReload,
     setMessages,
     handleStop,
+    handleContinue,
+    handleRetry,
+    handleEdit,
+    handleNavigate,
+    messageSiblings,
   };
 }
