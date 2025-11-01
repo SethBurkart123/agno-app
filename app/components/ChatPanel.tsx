@@ -30,6 +30,11 @@ export default function ChatPanel() {
     handleContinue,
     handleRetry,
     handleEdit,
+    editingMessageId,
+    editingDraft,
+    setEditingDraft,
+    handleEditCancel,
+    handleEditSubmit,
     handleNavigate,
     messageSiblings,
   } = useChatInput();
@@ -64,7 +69,12 @@ export default function ChatPanel() {
             messageSiblings={messageSiblings}
             onContinue={handleContinue}
             onRetry={handleRetry}
-            onEdit={handleEdit}
+            onEditStart={handleEdit}
+            editingMessageId={editingMessageId}
+            editingDraft={editingDraft}
+            setEditingDraft={setEditingDraft}
+            onEditCancel={handleEditCancel}
+            onEditSubmit={handleEditSubmit}
             onNavigate={handleNavigate}
           />
         </div>

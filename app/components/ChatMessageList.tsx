@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useCallback } from "react";
 import ChatMessage from "./Message";
 import { Message, MessageSibling } from "@/lib/types/chat";
 
@@ -8,7 +8,12 @@ interface ChatMessageListProps {
   messageSiblings: Record<string, MessageSibling[]>;
   onContinue?: (messageId: string) => void;
   onRetry?: (messageId: string) => void;
-  onEdit?: (messageId: string) => void;
+  onEditStart?: (messageId: string) => void;
+  editingMessageId?: string | null;
+  editingDraft?: string;
+  setEditingDraft?: (val: string) => void;
+  onEditCancel?: () => void;
+  onEditSubmit?: () => void;
   onNavigate?: (messageId: string, siblingId: string) => void;
   actionLoading?: string | null;
 }
@@ -19,7 +24,12 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({
   messageSiblings,
   onContinue,
   onRetry,
-  onEdit,
+  onEditStart,
+  editingMessageId,
+  editingDraft = "",
+  setEditingDraft,
+  onEditCancel,
+  onEditSubmit,
   onNavigate,
   actionLoading,
 }) => {
@@ -101,6 +111,22 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({
           const isStreamingMessage = isLoading && index === filteredMessages.length - 1 && m.role === "assistant";
           const isLastAssistantMessage = !isLoading && index === lastAssistantIndex && m.role === "assistant";
           
+          // Inline editor for user message being edited
+          if (m.role === 'user' && editingMessageId && m.id === editingMessageId) {
+            return (
+              <div key={m.id} className="flex w-full justify-end group/message">
+                <div className="relative mb-2 max-w-[50rem] w-full">
+                  <UserMessageEditor
+                    value={editingDraft}
+                    onChange={(val) => setEditingDraft && setEditingDraft(val)}
+                    onCancel={onEditCancel}
+                    onSubmit={onEditSubmit}
+                  />
+                </div>
+              </div>
+            );
+          }
+
           return (
             <div key={m.id}>
               <ChatMessage
@@ -111,7 +137,7 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({
                 siblings={siblings}
                 onContinue={m.role === 'assistant' && onContinue ? () => onContinue(m.id) : undefined}
                 onRetry={m.role === 'assistant' && onRetry ? () => onRetry(m.id) : undefined}
-                onEdit={m.role === 'user' && onEdit ? () => onEdit(m.id) : undefined}
+                onEdit={m.role === 'user' && onEditStart ? () => onEditStart(m.id) : undefined}
                 onNavigate={onNavigate ? (siblingId) => onNavigate(m.id, siblingId) : undefined}
                 isLoading={actionLoading === m.id}
                 isLastAssistantMessage={isLastAssistantMessage}
@@ -125,3 +151,77 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({
 };
 
 export default React.memo(ChatMessageList); 
+
+// Editor component for inline user message editing
+function UserMessageEditor({
+  value,
+  onChange,
+  onCancel,
+  onSubmit,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  onCancel?: () => void;
+  onSubmit?: () => void;
+}) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    // Focus and select all text
+    ta.focus();
+    ta.select();
+
+    const adjust = () => {
+      ta.style.height = 'auto';
+      ta.style.height = `${Math.min(ta.scrollHeight, 200)}px`;
+    };
+    adjust();
+    const ro = new ResizeObserver(adjust);
+    ro.observe(ta);
+    return () => ro.disconnect();
+  }, []);
+
+  const onKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+      e.preventDefault();
+      onSubmit && onSubmit();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      onCancel && onCancel();
+    }
+  }, [onSubmit, onCancel]);
+
+  return (
+    <div className="rounded-3xl bg-muted text-muted-foreground p-3">
+      <div className="w-full min-h-[40px] max-h-[200px]">
+        <textarea
+          ref={textareaRef}
+          className="w-full border-none bg-transparent px-1 text-base shadow-none focus:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 resize-none min-h-[40px] max-h-[200px] overflow-y-auto"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onKeyDown={onKeyDown}
+          rows={1}
+        />
+      </div>
+      <div className="flex items-center gap-2 pt-2 justify-end">
+        <button
+          type="button"
+          className="h-8 px-3 rounded-full border border-border hover:bg-accent text-sm"
+          onClick={onCancel}
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          className="h-8 px-3 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 text-sm disabled:opacity-50"
+          onClick={onSubmit}
+          disabled={!value.trim()}
+        >
+          Send
+        </button>
+      </div>
+    </div>
+  );
+}

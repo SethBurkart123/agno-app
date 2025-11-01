@@ -116,14 +116,14 @@ export default React.memo(function ChatMessage({
       <div className={`relative mb-2 ${role === "assistant" && "w-full"}`}>
         {/* Message bubble - different styling based on role */}
         {role === "user" ? (
-          <div className="rounded-3xl text-base leading-relaxed bg-muted text-muted-foreground px-5 py-2.5">
+          <div className="rounded-3xl text-base leading-relaxed bg-muted text-muted-foreground px-5 py-2.5 w-fit ml-auto">
             <p>{typeof content === "string" ? content : ""}</p>
           </div>
         ) : (
           <div
             className={clsx(
               "rounded-3xl text-base leading-relaxed max-w-full min-w-0 text-card-foreground",
-              "prose prose-zinc dark:prose-invert prose-p:my-2 prose-li:my-0.5 px-2 py-2.5 pb-8 w-full"
+              "prose prose-zinc dark:prose-invert prose-p:my-2 prose-li:my-0.5 px-2 py-2.5 w-full"
             )}
           >
           <div
@@ -283,16 +283,15 @@ export default React.memo(function ChatMessage({
           </div>
         )}
         
-        {/* Message Actions - consistent positioning for all messages */}
         {showActions && !isStreaming && (
           <div className={clsx(
-            "absolute flex items-center gap-1 transition-opacity duration-200",
-            role === "user" ? "right-2 -bottom-1" : "left-2 bottom-1",
-            role === "user" 
-              ? "opacity-0 group-hover/message:opacity-100 translate-y-full"
+            "flex items-center gap-1 transition-opacity duration-200 px-1 pointer-events-auto",
+            role === "user" ? "justify-end" : "justify-start",
+            role === "user"
+              ? "opacity-0 group-hover/message:opacity-100 hover:opacity-100 focus-within:opacity-100"
               : isLastAssistantMessage
                 ? "opacity-100"
-                : "opacity-0 group-hover/message:opacity-100"
+                : "opacity-0 group-hover/message:opacity-100 hover:opacity-100 focus-within:opacity-100"
           )}>
             <MessageActions
               message={message!}

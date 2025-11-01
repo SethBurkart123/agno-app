@@ -346,3 +346,7 @@ body {
     background-color: #f58d737a;
   }
 }
+
+[data-radix-popper-content-wrapper]:has([data-slot="tooltip-content"]) {
+  pointer-events: none;
+}

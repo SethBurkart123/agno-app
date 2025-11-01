@@ -178,7 +178,12 @@ interface ChatProps {
   messageSiblings: Record<string, MessageSibling[]>;
   onContinue: (messageId: string) => void;
   onRetry: (messageId: string) => void;
-  onEdit: (messageId: string) => void;
+  onEditStart: (messageId: string) => void;
+  editingMessageId: string | null;
+  editingDraft: string;
+  setEditingDraft: (val: string) => void;
+  onEditCancel: () => void;
+  onEditSubmit: () => void;
   onNavigate: (messageId: string, siblingId: string) => void;
 }
 
@@ -188,7 +193,12 @@ export default function Chat({
   messageSiblings,
   onContinue,
   onRetry,
-  onEdit,
+  onEditStart,
+  editingMessageId,
+  editingDraft,
+  setEditingDraft,
+  onEditCancel,
+  onEditSubmit,
   onNavigate,
 }: ChatProps) {
 
@@ -200,7 +210,12 @@ export default function Chat({
         messageSiblings={messageSiblings}
         onContinue={onContinue}
         onRetry={onRetry}
-        onEdit={onEdit}
+        onEditStart={onEditStart}
+        editingMessageId={editingMessageId}
+        editingDraft={editingDraft}
+        setEditingDraft={setEditingDraft}
+        onEditCancel={onEditCancel}
+        onEditSubmit={onEditSubmit}
         onNavigate={onNavigate}
         actionLoading={null}
       />
@@ -221,6 +236,8 @@ export function useChatInput() {
   const [canSendMessage, setCanSendMessage] = useState(true);
   const [reloadTrigger, setReloadTrigger] = useState(0);
   const [messageSiblings, setMessageSiblings] = useState<Record<string, MessageSibling[]>>({});
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [editingDraft, setEditingDraft] = useState<string>("");
   const abortControllerRef = useRef<AbortController | null>(null);
   const streamingMessageIdRef = useRef<string | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -503,22 +520,50 @@ export function useChatInput() {
   }, [chatId, selectedModel]);
 
   const handleEdit = useCallback(async (messageId: string) => {
-    const newContent = prompt('Edit your message:');
-    if (!newContent || !chatId) return;
+    // Start inline editing for this message
+    const msg = messages.find(m => m.id === messageId);
+    if (!msg || msg.role !== 'user') return;
+
+    let initial = '';
+    if (typeof msg.content === 'string') {
+      initial = msg.content;
+    } else if (Array.isArray(msg.content)) {
+      initial = msg.content
+        .filter((b: any) => b?.type === 'text' && typeof b.content === 'string')
+        .map((b: any) => b.content)
+        .join('\n\n');
+    }
+    setEditingDraft(initial);
+    setEditingMessageId(messageId);
+  }, [chatId, messages]);
+
+  const handleEditCancel = useCallback(() => {
+    setEditingMessageId(null);
+    setEditingDraft("");
+  }, []);
+
+  const handleEditSubmit = useCallback(async () => {
+    const messageId = editingMessageId;
+    const newContent = editingDraft.trim();
+    if (!messageId || !newContent || !chatId) return;
 
     const userMsgId = crypto.randomUUID();
     const assistantTempId = crypto.randomUUID();
 
+    // Optimistically replace from the edited message onward
     setMessages(prev => {
       const editIndex = prev.findIndex(m => m.id === messageId);
       if (editIndex === -1) return prev;
-      
+
       return [
         ...prev.slice(0, editIndex),
         { id: userMsgId, role: 'user', content: newContent, isComplete: true, sequence: 1 } as Message,
-        { id: assistantTempId, role: 'assistant', content: [{ type: "text", content: "" }], isComplete: false, sequence: 1 } as Message,
+        { id: assistantTempId, role: 'assistant', content: [{ type: 'text', content: '' }], isComplete: false, sequence: 1 } as Message,
       ];
     });
+
+    // Exit edit mode
+    setEditingMessageId(null);
 
     try {
       const response = await api.editUserMessage(messageId, newContent, chatId);
@@ -533,7 +578,7 @@ export function useChatInput() {
     } catch (error) {
       console.error('Failed to edit message:', error);
     }
-  }, [chatId]);
+  }, [chatId, editingDraft, editingMessageId]);
 
   const handleNavigate = useCallback(async (messageId: string, siblingId: string) => {
     if (!chatId) return;
@@ -592,6 +637,11 @@ export function useChatInput() {
     handleContinue,
     handleRetry,
     handleEdit,
+    editingMessageId,
+    editingDraft,
+    setEditingDraft,
+    handleEditCancel,
+    handleEditSubmit,
     handleNavigate,
     messageSiblings,
   };
