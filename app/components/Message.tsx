@@ -283,7 +283,7 @@ export default React.memo(function ChatMessage({
           </div>
         )}
         
-        {showActions && !isStreaming && (
+        {showActions && isStreaming !== true && (
           <div className={clsx(
             "flex items-center gap-1 transition-opacity duration-200 px-1 pointer-events-auto",
             role === "user" ? "justify-end" : "justify-start",
