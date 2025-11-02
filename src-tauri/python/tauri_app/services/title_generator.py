@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Optional
 from pytauri import AppHandle
-from agno.agent import Agent, Message
+from agno.agent import Agent
 
 from .. import db
 

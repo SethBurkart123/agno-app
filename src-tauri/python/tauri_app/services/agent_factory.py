@@ -11,7 +11,7 @@ from typing import Any, Dict, List, Optional
 from pytauri import AppHandle
 
 from .. import db
-from .model_factory import get_model, get_default_model_for_provider
+from .model_factory import get_model
 from .tool_registry import get_tool_registry
 
 from agno.agent import Agent
@@ -49,7 +49,7 @@ def create_agent_for_chat(
     
     # Extract configuration
     provider = config.get("provider", "openai")
-    model_id = config.get("model_id") or get_default_model_for_provider(provider)
+    model_id = config.get("model_id")
     tool_ids = config.get("tool_ids", [])
     instructions = config.get("instructions", [])
     name = config.get("name", "Assistant")
@@ -76,60 +76,6 @@ def create_agent_for_chat(
     )
     
     return agent
-
-
-def convert_messages_to_agno_format(
-    messages: List[Dict[str, Any]]
-) -> List[Dict[str, str]]:
-    """
-    Convert database messages to Agno's expected format.
-    
-    Agno expects: [{"role": "user", "content": "..."}, ...]
-    
-    Args:
-        messages: List of message dicts from database
-        
-    Returns:
-        List of messages in Agno format
-    """
-    agno_messages = []
-    for msg in messages:
-        role = msg.get("role")
-        content = msg.get("content", "")
-        
-        # Skip messages with no role or content
-        if not role or content is None:
-            continue
-        
-        agno_messages.append({
-            "role": role,
-            "content": content,
-        })
-    
-    return agno_messages
-
-
-def build_agent_context(
-    history_messages: List[Dict[str, Any]],
-    new_user_message: str,
-) -> str:
-    """
-    Build context string from history messages and new message.
-    
-    Since we're not using Agno's history management, we need to
-    construct a context-aware prompt manually when needed.
-    
-    Args:
-        history_messages: Previous messages from database
-        new_user_message: New message from user
-        
-    Returns:
-        Context string to pass to agent
-    """
-    # For simple cases, we can just pass the new message
-    # For complex cases with history, we'd build a context string
-    # But Agno agents can handle message arrays directly
-    return new_user_message
 
 
 def update_agent_tools(

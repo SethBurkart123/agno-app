@@ -1,4 +1,5 @@
 from pathlib import Path
+from dotenv import load_dotenv
 from anyio.from_thread import start_blocking_portal
 from pydantic.alias_generators import to_camel
 from pytauri import (
@@ -6,13 +7,12 @@ from pytauri import (
     context_factory,
 )
 from tauri_app.db import init_database
-from tauri_app.config import load_env
 from .commands import commands, PYTAURI_GEN_TS
 
 def main() -> int:
     with start_blocking_portal("asyncio") as portal:
         # Ensure environment variables are loaded (e.g., OPENAI_API_KEY)
-        load_env()
+        load_dotenv()
         if PYTAURI_GEN_TS:
             # ⭐ Generate TypeScript Client to your frontend `src/client` directory
             output_dir = Path(__file__).parent.parent.parent.parent / "app" / "python"

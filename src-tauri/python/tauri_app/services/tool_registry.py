@@ -137,7 +137,7 @@ class ToolRegistry:
             """
 
             import time
-            time.sleep(2)
+            time.sleep(1)
             
             try:
                 # Safe eval using only basic operations
@@ -176,7 +176,7 @@ class ToolRegistry:
 
             # Delay 10 seconds
             import time
-            time.sleep(10)
+            time.sleep(1)
 
             return f"Echo: {message}"
         

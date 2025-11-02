@@ -2,6 +2,8 @@ import OpenAIIcon from './icons/OpenAI';
 import ClaudeIcon from './icons/Claude';
 import GroqIcon from './icons/Groq';
 import OllamaIcon from './icons/Ollama';
+import VLLMIcon from './icons/VLLM';
+import LMStudioIcon from './icons/LMStudio';
 
 export interface ProviderConfig {
   provider: string;
@@ -71,7 +73,37 @@ export const PROVIDERS: ProviderDefinition[] = [
     ],
     defaults: { enabled: true, baseUrl: 'http://localhost:11434' },
   },
+  {
+    key: 'vllm',
+    name: 'vLLM',
+    description: 'Local vLLM server (OpenAI‑compatible)',
+    icon: VLLMIcon,
+    fields: [
+      { id: 'baseUrl', label: 'Base URL', type: 'text', placeholder: 'http://localhost:8000/v1' },
+    ],
+    defaults: { enabled: true, baseUrl: 'http://localhost:8000/v1' },
+  },
+  {
+    key: 'lmstudio',
+    name: 'LM Studio',
+    description: 'Local LM Studio server',
+    icon: LMStudioIcon,
+    fields: [
+      { id: 'baseUrl', label: 'Base URL', type: 'text', placeholder: 'http://localhost:1234/v1' },
+    ],
+    defaults: { enabled: true, baseUrl: 'http://localhost:1234/v1' },
+  },
+  {
+    key: 'openai_like',
+    name: 'OpenAI‑Compatible',
+    description: 'Any OpenAI‑like API (Together, DeepInfra, OpenRouter, …)',
+    icon: OpenAIIcon,
+    fields: [
+      { id: 'apiKey', label: 'API Key', type: 'password', placeholder: '<provider api key>' },
+      { id: 'baseUrl', label: 'Base URL', type: 'text', placeholder: 'https://api.example.com/v1' },
+    ],
+    defaults: { enabled: true },
+  },
 ];
 
 export const PROVIDER_MAP = Object.fromEntries(PROVIDERS.map((p) => [p.key, p]));
-

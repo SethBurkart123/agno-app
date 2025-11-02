@@ -27,8 +27,6 @@ export async function getVersion(
 /**
  * Get list of available models based on configured providers.
  *
- * Checks both environment variables and database provider settings.
- *
  * Returns:
  *     List of available models with provider, modelId, displayName, and isDefault
  */
