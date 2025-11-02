@@ -25,6 +25,16 @@ export type Enabled1 = boolean
 export type RootModelNoneType = null
 export type Toolids = string[]
 export type Toolids1 = string[]
+export type Enabled2 = boolean
+export type Prompt = string
+export type Modelmode = string
+export type Provider3 = string
+export type Modelid1 = string
+export type Enabled3 = boolean
+export type Prompt1 = string
+export type Modelmode1 = string
+export type Provider4 = string
+export type Modelid2 = string
 export type Id = (string | null)
 export type Title = string
 export type Id1 = string
@@ -52,8 +62,8 @@ export type Updatedat = (string | null)
 export type Id4 = (string | null)
 export type Title1 = (string | null)
 export type Model1 = (string | null)
-export type Provider3 = string
-export type Modelid1 = string
+export type Provider5 = string
+export type Modelid3 = string
 export type Toolids2 = string[]
 export type Instructions = string[]
 export type Name1 = (string | null)
@@ -65,28 +75,28 @@ export type Id6 = string
 export type Chatid = string
 export type Toolids3 = string[]
 export type Chatid1 = string
-export type Provider4 = string
-export type Modelid2 = string
+export type Provider6 = string
+export type Modelid4 = string
 export type Id7 = string
 export type Name2 = (string | null)
 export type Description1 = (string | null)
 export type Category = (string | null)
 export type Tools = ToolInfo[]
 export type Toolids4 = string[]
-export type Provider5 = string
-export type Modelid3 = string
+export type Provider7 = string
+export type Modelid5 = string
 export type Messageid = string
 export type JavaScriptChannelIdChatEvent = string
 export type Messages1 = {
 [k: string]: unknown
 }[]
-export type Modelid4 = (string | null)
+export type Modelid6 = (string | null)
 export type Chatid2 = (string | null)
 export type Messageid1 = string
 export type Chatid3 = string
 export type Messageid2 = string
 export type Chatid4 = string
-export type Modelid5 = (string | null)
+export type Modelid7 = (string | null)
 export type Messageid3 = string
 export type Newcontent = string
 export type Chatid5 = string
@@ -131,6 +141,14 @@ set_default_tools: {
 input: SetDefaultToolsInput
 output: RootModelNoneType
 }
+get_auto_title_settings: {
+input: void | undefined
+output: AutoTitleSettings
+}
+save_auto_title_settings: {
+input: SaveAutoTitleSettingsInput
+output: RootModelNoneType
+}
 get_all_chats: {
 input: void | undefined
 output: AllChatsData
@@ -166,6 +184,10 @@ output: AvailableToolsResponse
 get_chat_agent_config: {
 input: ChatId
 output: ChatAgentConfigResponse
+}
+generate_chat_title: {
+input: ChatId
+output: RootModelDictStrAny
 }
 cancel_run: {
 input: CancelRunRequest
@@ -232,6 +254,20 @@ toolIds: Toolids
 export interface SetDefaultToolsInput {
 toolIds: Toolids1
 }
+export interface AutoTitleSettings {
+enabled?: Enabled2
+prompt?: Prompt
+modelMode?: Modelmode
+provider?: Provider3
+modelId?: Modelid1
+}
+export interface SaveAutoTitleSettingsInput {
+enabled: Enabled3
+prompt: Prompt1
+modelMode: Modelmode1
+provider: Provider4
+modelId: Modelid2
+}
 export interface AllChatsData {
 chats: Chats
 }
@@ -280,8 +316,8 @@ model?: Model1
 agentConfig?: (AgentConfig | null)
 }
 export interface AgentConfig {
-provider?: Provider3
-modelId?: Modelid1
+provider?: Provider5
+modelId?: Modelid3
 toolIds?: Toolids2
 instructions?: Instructions
 name?: Name1
@@ -304,8 +340,8 @@ toolIds: Toolids3
 }
 export interface UpdateChatModelInput {
 chatId: Chatid1
-provider: Provider4
-modelId: Modelid2
+provider: Provider6
+modelId: Modelid4
 }
 export interface AvailableToolsResponse {
 tools: Tools
@@ -318,8 +354,8 @@ category?: Category
 }
 export interface ChatAgentConfigResponse {
 toolIds: Toolids4
-provider: Provider5
-modelId: Modelid3
+provider: Provider7
+modelId: Modelid5
 }
 export interface CancelRunRequest {
 messageId: Messageid
@@ -331,7 +367,7 @@ export interface RootModelDict {
 export interface StreamChatRequest {
 channel: JavaScriptChannelIdChatEvent
 messages: Messages1
-modelId?: Modelid4
+modelId?: Modelid6
 chatId?: Chatid2
 [k: string]: unknown
 }
@@ -345,7 +381,7 @@ export interface RetryMessageRequest {
 messageId: Messageid2
 chatId: Chatid4
 channel: JavaScriptChannelIdChatEvent
-modelId?: Modelid5
+modelId?: Modelid7
 [k: string]: unknown
 }
 export interface EditUserMessageRequest {

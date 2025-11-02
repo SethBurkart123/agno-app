@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { usePageTitle } from '@/contexts/page-title-context';
 import SettingsSidebar, { type TabKey } from './SettingsSidebar';
 import ProvidersPanel from './providers/ProvidersPanel';
+import AutoTitlePanel from './AutoTitlePanel';
 import ThemeToggle from '@/components/ThemeToggle';
 
 export default function SettingsPage() {
@@ -18,8 +19,8 @@ export default function SettingsPage() {
     switch (activeTab) {
       case 'general':
         return (
-          <div className="py-8">
-            <p className="text-muted-foreground">General settings coming soon...</p>
+          <div>
+            <AutoTitlePanel />
           </div>
         );
       case 'providers':

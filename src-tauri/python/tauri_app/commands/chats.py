@@ -22,6 +22,7 @@ from ..models.chat import (
 
 from ..services.agent_factory import update_agent_tools, update_agent_model
 from ..services.tool_registry import get_tool_registry
+from ..services.title_generator import generate_title_for_chat
 from . import commands
 
 
@@ -216,4 +217,24 @@ async def get_chat_agent_config(body: ChatId, app_handle: AppHandle) -> ChatAgen
         provider=config.get("provider", "openai"),
         modelId=config.get("model_id", "gpt-4o-mini"),
     )
+
+
+@commands.command()
+async def generate_chat_title(body: ChatId, app_handle: AppHandle) -> Dict[str, Any]:
+    """
+    Generate and update title for a chat based on its first message.
+    
+    Args:
+        body: Contains chatId
+        app_handle: Tauri app handle
+        
+    Returns:
+        Dict with the new title or None if generation failed
+    """
+    title = generate_title_for_chat(body.id, app_handle)
+    if title:
+        with db.db_session(app_handle) as sess:
+            db.update_chat(sess, id=body.id, title=title)
+        return {"title": title}
+    return {"title": None}
 

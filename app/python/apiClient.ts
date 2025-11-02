@@ -93,6 +93,33 @@ export async function setDefaultTools(
     return await pyInvoke("set_default_tools", body, options);
 }
 
+/**
+ * Get auto-title generation settings.
+ *
+ * Returns:
+ *     Auto-title settings including enabled, prompt, and model configuration
+ */
+export async function getAutoTitleSettings(
+    body: Commands["get_auto_title_settings"]["input"],
+    options?: InvokeOptions
+): Promise<Commands["get_auto_title_settings"]["output"]> {
+    return await pyInvoke("get_auto_title_settings", body, options);
+}
+
+/**
+ * Save auto-title generation settings.
+ *
+ * Args:
+ *     body: Auto-title settings to save
+ *     app_handle: Tauri app handle
+ */
+export async function saveAutoTitleSettings(
+    body: Commands["save_auto_title_settings"]["input"],
+    options?: InvokeOptions
+): Promise<Commands["save_auto_title_settings"]["output"]> {
+    return await pyInvoke("save_auto_title_settings", body, options);
+}
+
 export async function getAllChats(
     body: Commands["get_all_chats"]["input"],
     options?: InvokeOptions
@@ -184,6 +211,23 @@ export async function getChatAgentConfig(
     options?: InvokeOptions
 ): Promise<Commands["get_chat_agent_config"]["output"]> {
     return await pyInvoke("get_chat_agent_config", body, options);
+}
+
+/**
+ * Generate and update title for a chat based on its first message.
+ *
+ * Args:
+ *     body: Contains chatId
+ *     app_handle: Tauri app handle
+ *
+ * Returns:
+ *     Dict with the new title or None if generation failed
+ */
+export async function generateChatTitle(
+    body: Commands["generate_chat_title"]["input"],
+    options?: InvokeOptions
+): Promise<Commands["generate_chat_title"]["output"]> {
+    return await pyInvoke("generate_chat_title", body, options);
 }
 
 /**

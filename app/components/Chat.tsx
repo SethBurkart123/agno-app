@@ -386,6 +386,17 @@ export function useChatInput() {
         throw new Error(`Failed to stream chat: ${response.statusText}`);
       }
 
+      // Trigger title generation in background (only for first message)
+      const isFirstMessage = newMessages.length === 1 && newMessages[0].role === "user";
+      if (isFirstMessage && sessionId) {
+        // Call title generation independently - it will resolve whenever ready
+        api.generateChatTitle(sessionId).then(() => {
+          refreshChats();
+        }).catch((err) => {
+          console.error("Failed to generate title:", err);
+        });
+      }
+
       // Stream with live updates
       await processMessageStream(
         response,
@@ -411,6 +422,13 @@ export function useChatInput() {
           if (!currentChatId && newSessionId) {
             window.history.replaceState(null, '', `/?chatId=${newSessionId}`);
             refreshChats();
+            
+            // Trigger title generation for new chat
+            api.generateChatTitle(newSessionId).then(() => {
+              refreshChats();
+            }).catch((err) => {
+              console.error("Failed to generate title:", err);
+            });
           }
         },
         (messageId) => {

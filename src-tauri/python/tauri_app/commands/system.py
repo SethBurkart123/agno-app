@@ -14,6 +14,8 @@ from ..models.chat import (
     SaveProviderConfigInput,
     DefaultToolsResponse,
     SetDefaultToolsInput,
+    AutoTitleSettings,
+    SaveAutoTitleSettingsInput,
 )
 from ..services.model_factory import (
     get_available_models as get_models_from_factory,
@@ -185,5 +187,47 @@ async def set_default_tools(body: SetDefaultToolsInput, app_handle: AppHandle) -
         db.set_default_tool_ids(sess, body.toolIds)
     finally:
         sess.close()
+    
+    return None
+
+
+@commands.command()
+async def get_auto_title_settings(app_handle: AppHandle) -> AutoTitleSettings:
+    """
+    Get auto-title generation settings.
+    
+    Returns:
+        Auto-title settings including enabled, prompt, and model configuration
+    """
+    with db.db_session(app_handle) as sess:
+        settings = db.get_auto_title_settings(sess)
+    
+    return AutoTitleSettings(
+        enabled=settings.get("enabled", True),
+        prompt=settings.get("prompt", "Generate a brief, descriptive title (max 6 words) for this conversation based on the user's message: {{ message }}\n\nReturn only the title, nothing else."),
+        modelMode=settings.get("model_mode", "current"),
+        provider=settings.get("provider", "openai"),
+        modelId=settings.get("model_id", "gpt-4o-mini"),
+    )
+
+
+@commands.command()
+async def save_auto_title_settings(body: SaveAutoTitleSettingsInput, app_handle: AppHandle) -> None:
+    """
+    Save auto-title generation settings.
+    
+    Args:
+        body: Auto-title settings to save
+        app_handle: Tauri app handle
+    """
+    with db.db_session(app_handle) as sess:
+        settings = {
+            "enabled": body.enabled,
+            "prompt": body.prompt,
+            "model_mode": body.modelMode,
+            "provider": body.provider,
+            "model_id": body.modelId,
+        }
+        db.save_auto_title_settings(sess, settings)
     
     return None

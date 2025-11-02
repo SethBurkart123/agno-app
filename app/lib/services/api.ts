@@ -280,6 +280,10 @@ class ApiService {
   async cancelRun(messageId: string): Promise<{ cancelled: boolean }> {
     return invoke<{ cancelled: boolean }>('cancel_run', { messageId });
   }
+
+  async generateChatTitle(chatId: string): Promise<{ title: string | null }> {
+    return invoke<{ title: string | null }>('generate_chat_title', { id: chatId });
+  }
 }
 
 export const api = ApiService.getInstance();
