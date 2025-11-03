@@ -146,9 +146,20 @@ export async function saveModelSettings(
 }
 
 /**
+ * Re-process a message to parse <think> tags from its content.
+ * Returns {success: bool}
+ */
+export async function reprocessMessageThinkTags(
+    body: Commands["reprocess_message_think_tags"]["input"],
+    options?: InvokeOptions
+): Promise<Commands["reprocess_message_think_tags"]["output"]> {
+    return await pyInvoke("reprocess_message_think_tags", body, options);
+}
+
+/**
  * Handle user response to thinking tag detection prompt.
  *
- * If accepted, enables parse_think_tags.
+ * If accepted, enables parse_think_tags and reprocesses the current message.
  * If declined, stores thinkingTagPrompted: { prompted: true, declined: true } in extra.
  *
  * Args:

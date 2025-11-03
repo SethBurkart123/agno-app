@@ -683,5 +683,6 @@ export function useChatInput(onThinkTagDetected?: () => void) {
     handleEditSubmit,
     handleNavigate,
     messageSiblings,
+    streamingMessageIdRef,
   };
 }

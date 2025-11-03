@@ -516,6 +516,102 @@ class StreamChatRequest(BaseModel):
     chatId: Optional[str] = None
 
 
+def parse_think_tags_from_content(content: str) -> List[Dict[str, Any]]:
+    """
+    Parse content and extract <think> tags, converting to content blocks.
+    Returns list of content blocks with reasoning extracted.
+    """
+    blocks = []
+    current_text = ""
+    current_reasoning = ""
+    inside_think_tag = False
+    i = 0
+    
+    while i < len(content):
+        if not inside_think_tag:
+            # Look for <think>
+            if content[i:i+7] == '<think>':
+                # Flush any pending text
+                if current_text:
+                    blocks.append({"type": "text", "content": current_text})
+                    current_text = ""
+                inside_think_tag = True
+                i += 7
+            else:
+                current_text += content[i]
+                i += 1
+        else:
+            # Look for </think>
+            if content[i:i+8] == '</think>':
+                # Flush reasoning
+                if current_reasoning:
+                    blocks.append({"type": "reasoning", "content": current_reasoning, "isCompleted": True})
+                    current_reasoning = ""
+                inside_think_tag = False
+                i += 8
+            else:
+                current_reasoning += content[i]
+                i += 1
+    
+    # Flush any remaining content
+    if current_text:
+        blocks.append({"type": "text", "content": current_text})
+    if current_reasoning:
+        # If we're still inside a think tag at the end, treat it as reasoning
+        blocks.append({"type": "reasoning", "content": current_reasoning, "isCompleted": True})
+    
+    return blocks if blocks else [{"type": "text", "content": ""}]
+
+
+def reprocess_message_with_think_tags(app_handle: AppHandle, message_id: str) -> bool:
+    """
+    Re-process a message's content to parse <think> tags.
+    Returns True if message was updated, False otherwise.
+    """
+    try:
+        with db.db_session(app_handle) as sess:
+            msg = sess.get(db.Message, message_id)
+            if not msg:
+                print(f"[reprocess] Message {message_id} not found")
+                return False
+            
+            # Parse the current content
+            try:
+                current_content = json.loads(msg.content)
+            except (json.JSONDecodeError, TypeError):
+                current_content = msg.content
+            
+            # If content is already blocks, extract text content
+            text_content = ""
+            if isinstance(current_content, list):
+                for block in current_content:
+                    if isinstance(block, dict) and block.get("type") == "text":
+                        text_content += block.get("content", "")
+            elif isinstance(current_content, str):
+                text_content = current_content
+            else:
+                print(f"[reprocess] Unknown content format for message {message_id}")
+                return False
+            
+            # Check if there are any think tags
+            if '<think>' not in text_content:
+                print(f"[reprocess] No think tags found in message {message_id}")
+                return False
+            
+            # Parse and update
+            new_blocks = parse_think_tags_from_content(text_content)
+            msg.content = json.dumps(new_blocks)
+            sess.commit()
+            
+            print(f"[reprocess] Successfully parsed think tags for message {message_id}")
+            return True
+            
+    except Exception as e:
+        print(f"[reprocess] Error reprocessing message {message_id}: {e}")
+        traceback.print_exc()
+        return False
+
+
 class CancelRunRequest(BaseModel):
     messageId: str
 
@@ -583,7 +679,6 @@ async def stream_chat(
     
     assistant_msg_id = init_assistant_msg(app_handle, chat_id, parent_id)
     
-    # Emit the assistant message ID for frontend tracking
     ch.send_model(ChatEvent(event="AssistantMessageId", content=assistant_msg_id))
     
     try:

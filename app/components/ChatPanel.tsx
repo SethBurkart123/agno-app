@@ -18,7 +18,7 @@ const Chat = dynamic(() => import("@/components/Chat"), { ssr: false });
  * on every token.
  */
 export default function ChatPanel() {
-  const { selectedModel, setSelectedModel, models } = useChat();
+  const { selectedModel, setSelectedModel, models, chatId } = useChat();
   const [showThinkingPrompt, setShowThinkingPrompt] = useState(false);
   const [hasCheckedThinkingPrompt, setHasCheckedThinkingPrompt] = useState(false);
   const [modelSettings, setModelSettings] = useState<any>(null);
@@ -66,14 +66,55 @@ export default function ChatPanel() {
     setShowThinkingPrompt(false);
   }, [selectedModel]);
 
+  // Own streaming + input state locally inside this subtree
+  const { 
+    input, 
+    handleInputChange, 
+    handleSubmit, 
+    isLoading, 
+    inputRef, 
+    messages, 
+    canSendMessage, 
+    handleStop,
+    handleContinue,
+    handleRetry,
+    handleEdit,
+    editingMessageId,
+    editingDraft,
+    setEditingDraft,
+    handleEditCancel,
+    handleEditSubmit,
+    handleNavigate,
+    messageSiblings,
+    streamingMessageIdRef,
+    triggerReload,
+  } = useChatInput(handleThinkTagDetected);
+
   // Handle user accepting the prompt
   const handleAcceptThinkingPrompt = useCallback(async () => {
     const [provider, modelId] = selectedModel?.split(':') || [];
     if (!provider || !modelId) return;
     
     try {
+      // Enable think tag parsing in DB - this affects future streaming immediately
       await api.respondToThinkingTagPrompt(provider, modelId, true);
       setShowThinkingPrompt(false);
+      
+      // Get the message to reprocess
+      const messageId = streamingMessageIdRef.current || 
+                       messages.filter(m => m.role === 'assistant').pop()?.id;
+      
+      if (messageId && chatId) {
+        if (!isLoading && streamingMessageIdRef.current) {
+          // Stream is complete, reprocess immediately
+          console.log(`Reprocessing message ${messageId} to parse think tags`);
+          const result = await api.reprocessMessageThinkTags(messageId);
+          if (result.success) {
+            // Reload messages to show parsed version
+            triggerReload();
+          }
+        }
+      }
       
       // Reload model settings
       const settings = await getModelSettings();
@@ -81,7 +122,7 @@ export default function ChatPanel() {
     } catch (error) {
       console.error('Failed to accept thinking tag prompt:', error);
     }
-  }, [selectedModel]);
+  }, [selectedModel, streamingMessageIdRef, messages, chatId, isLoading, triggerReload]);
 
   // Handle user declining the prompt
   const handleDeclineThinkingPrompt = useCallback(async () => {
@@ -104,28 +145,6 @@ export default function ChatPanel() {
   const handleDismissThinkingPrompt = useCallback(() => {
     setShowThinkingPrompt(false);
   }, []);
-
-  // Own streaming + input state locally inside this subtree
-  const { 
-    input, 
-    handleInputChange, 
-    handleSubmit, 
-    isLoading, 
-    inputRef, 
-    messages, 
-    canSendMessage, 
-    handleStop,
-    handleContinue,
-    handleRetry,
-    handleEdit,
-    editingMessageId,
-    editingDraft,
-    setEditingDraft,
-    handleEditCancel,
-    handleEditSubmit,
-    handleNavigate,
-    messageSiblings,
-  } = useChatInput(handleThinkTagDetected);
 
   // Provide stable callback wrappers so siblings like ChatInputForm
   // don't re-render on every token just because handler identity changes.

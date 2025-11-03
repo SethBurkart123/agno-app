@@ -22,7 +22,7 @@ export default function ThinkingTagPrompt({
   onDismiss,
 }: ThinkingTagPromptProps) {
   return (
-    <div className="fixed bottom-20 right-6 z-50 w-[420px] animate-in slide-in-from-bottom-5 duration-300">
+    <div className="fixed bottom-44 right-6 z-50 w-[420px] animate-in slide-in-from-bottom-5 duration-300">
       <Item variant="outline" className="shadow-lg bg-background border-border">
         <ItemContent>
           <div className="flex items-start justify-between gap-2">

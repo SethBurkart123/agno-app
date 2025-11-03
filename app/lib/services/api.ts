@@ -290,6 +290,10 @@ class ApiService {
   async respondToThinkingTagPrompt(provider: string, modelId: string, accepted: boolean): Promise<void> {
     return invoke<void>('respond_to_thinking_tag_prompt', { provider, modelId, accepted });
   }
+
+  async reprocessMessageThinkTags(messageId: string): Promise<{ success: boolean }> {
+    return invoke<{ success: boolean }>('reprocess_message_think_tags', { messageId });
+  }
 }
 
 export const api = ApiService.getInstance();

@@ -46,6 +46,7 @@ export type Models1 = ModelSettingsInfo[]
 export type Provider6 = string
 export type Modelid4 = string
 export type Parsethinktags1 = boolean
+export type Messageid = string
 export type Provider7 = string
 export type Modelid5 = string
 export type Accepted = boolean
@@ -99,27 +100,27 @@ export type Tools = ToolInfo[]
 export type Toolids4 = string[]
 export type Provider10 = string
 export type Modelid8 = string
-export type Messageid = string
+export type Messageid1 = string
 export type JavaScriptChannelIdChatEvent = string
 export type Messages1 = {
 [k: string]: unknown
 }[]
 export type Modelid9 = (string | null)
 export type Chatid2 = (string | null)
-export type Messageid1 = string
+export type Messageid2 = string
 export type Chatid3 = string
 export type Modelid10 = (string | null)
-export type Messageid2 = string
+export type Messageid3 = string
 export type Chatid4 = string
 export type Modelid11 = (string | null)
-export type Messageid3 = string
+export type Messageid4 = string
 export type Newcontent = string
 export type Chatid5 = string
 export type Modelid12 = (string | null)
-export type Messageid4 = string
+export type Messageid5 = string
 export type Siblingid = string
 export type Chatid6 = string
-export type Messageid5 = string
+export type Messageid6 = string
 export type Id8 = string
 export type Sequence = number
 export type Isactive = boolean
@@ -172,6 +173,10 @@ output: AllModelSettingsResponse
 save_model_settings: {
 input: SaveModelSettingsInput
 output: RootModelNoneType
+}
+reprocess_message_think_tags: {
+input: ReprocessMessageRequest
+output: RootModelDict
 }
 respond_to_thinking_tag_prompt: {
 input: RespondToThinkingTagPromptInput
@@ -322,6 +327,13 @@ modelId: Modelid4
 parseThinkTags?: Parsethinktags1
 reasoning?: (ReasoningInfo | null)
 }
+export interface ReprocessMessageRequest {
+messageId: Messageid
+[k: string]: unknown
+}
+export interface RootModelDict {
+[k: string]: unknown
+}
 export interface RespondToThinkingTagPromptInput {
 provider: Provider7
 modelId: Modelid5
@@ -417,10 +429,7 @@ provider: Provider10
 modelId: Modelid8
 }
 export interface CancelRunRequest {
-messageId: Messageid
-[k: string]: unknown
-}
-export interface RootModelDict {
+messageId: Messageid1
 [k: string]: unknown
 }
 export interface StreamChatRequest {
@@ -431,21 +440,21 @@ chatId?: Chatid2
 [k: string]: unknown
 }
 export interface ContinueMessageRequest {
-messageId: Messageid1
+messageId: Messageid2
 chatId: Chatid3
 channel: JavaScriptChannelIdChatEvent
 modelId?: Modelid10
 [k: string]: unknown
 }
 export interface RetryMessageRequest {
-messageId: Messageid2
+messageId: Messageid3
 chatId: Chatid4
 channel: JavaScriptChannelIdChatEvent
 modelId?: Modelid11
 [k: string]: unknown
 }
 export interface EditUserMessageRequest {
-messageId: Messageid3
+messageId: Messageid4
 newContent: Newcontent
 chatId: Chatid5
 channel: JavaScriptChannelIdChatEvent
@@ -453,13 +462,13 @@ modelId?: Modelid12
 [k: string]: unknown
 }
 export interface SwitchToSiblingRequest {
-messageId: Messageid4
+messageId: Messageid5
 siblingId: Siblingid
 chatId: Chatid6
 [k: string]: unknown
 }
 export interface GetMessageSiblingsRequest {
-messageId: Messageid5
+messageId: Messageid6
 [k: string]: unknown
 }
 export interface MessageSiblingInfo {
