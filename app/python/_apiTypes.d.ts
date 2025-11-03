@@ -329,7 +329,6 @@ reasoning?: (ReasoningInfo | null)
 }
 export interface ReprocessMessageRequest {
 messageId: Messageid
-[k: string]: unknown
 }
 export interface RootModelDict {
 [k: string]: unknown

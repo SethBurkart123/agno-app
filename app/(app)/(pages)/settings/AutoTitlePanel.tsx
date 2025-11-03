@@ -43,11 +43,11 @@ export default function AutoTitlePanel() {
     try {
       const response = await getAutoTitleSettings(undefined);
       setSettings({
-        enabled: response.enabled,
-        prompt: response.prompt,
+        enabled: response.enabled || false,
+        prompt: response.prompt || "",
         modelMode: response.modelMode as "current" | "specific",
-        provider: response.provider,
-        modelId: response.modelId,
+        provider: response.provider || "",
+        modelId: response.modelId || "",
       });
     } catch (e) {
       console.error('Failed to load auto-title settings', e);
