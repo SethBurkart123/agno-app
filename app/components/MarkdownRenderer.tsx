@@ -51,13 +51,15 @@ const CodeBlock = memo(({ node, inline, className, children, ...props }: any) =>
 
   return (
     <div className="relative group/code not-prose">
-      <button
-        onClick={copyToClipboard}
-        className="absolute right-2 top-2 p-1.5 rounded-md flex justify-center text-sm items-center gap-2 bg-muted hover:bg-muted/80 dark:bg-white/2 dark:hover:bg-white/4 transition opacity-0 group-hover/code:opacity-100 z-10"
-        title="Copy code"
-      >
-        {copied ? (<Check size={16} />) : (<Copy size={16} />)}
-      </button>
+      <div className="h-[calc(100%-1rem)] absolute top-2 right-2 pointer-events-none">
+        <button
+          onClick={copyToClipboard}
+          className="sticky right-2 top-4 backdrop-blur-md p-1.5 pointer-events-auto rounded-md flex justify-center text-sm items-center gap-2 bg-muted hover:bg-muted/80 dark:bg-white/5 dark:hover:bg-white/4 transition opacity-0 group-hover/code:opacity-100 z-10"
+          title="Copy code"
+        >
+          {copied ? (<Check size={16} />) : (<Copy size={16} />)}
+        </button>
+      </div>
       <Suspense fallback={
         <pre style={{
           color: 'var(--tw-prose-code)',
